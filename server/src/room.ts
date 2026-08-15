@@ -129,6 +129,7 @@ export class Room {
     const member = this.players.get(playerId);
     if (!member || member.lockedOut) return false;
     if (this.settings.mode === 'solo') return member.isHost;
+    if (this.settings.mode === 'teams') return true;
     return !member.isHost;
   }
 
@@ -142,7 +143,11 @@ export class Room {
         .map(({ socketId: _socketId, ...player }) => player)
         .filter(
           (player) =>
-            !player.isHost || this.settings.mode === 'solo' || this.settings.hostPlays || this.phase === 'lobby',
+            this.phase === 'lobby' ||
+            !player.isHost ||
+            this.settings.mode === 'solo' ||
+            this.settings.mode === 'teams' ||
+            this.settings.hostPlays,
         ),
       buzzedBy: this.buzzedBy,
       answer:

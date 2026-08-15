@@ -21,6 +21,7 @@ const CATEGORY_LABELS: Record<Theme['category'], string> = {
 export default function Lobby({ state, isHost, onUpdate, onRenameTeam, onStart, onKick }: Props) {
   const [themes, setThemes] = useState<Theme[]>([]);
   const [teamName, setTeamName] = useState('Sur place');
+  const [teamDrafts, setTeamDrafts] = useState<string[]>([]);
   const { settings, players } = state;
 
   useEffect(() => {
@@ -46,8 +47,16 @@ export default function Lobby({ state, isHost, onUpdate, onRenameTeam, onStart, 
     if (host?.name) setTeamName(host.name);
   }, [host?.name]);
 
+  useEffect(() => {
+    const nextDrafts = Array.from({ length: Math.max(1, settings.teamCount ?? 2) }, (_, index) => {
+      const value = settings.teamNames?.[index];
+      return value && value.trim().length > 0 ? value : `Équipe ${index + 1}`;
+    });
+    setTeamDrafts(nextDrafts);
+  }, [settings.teamCount, settings.teamNames]);
+
   const teamLabels = Array.from({ length: Math.max(1, settings.teamCount ?? 2) }, (_, index) => {
-    const rawName = settings.teamNames?.[index];
+    const rawName = teamDrafts[index] ?? settings.teamNames?.[index];
     return rawName && rawName.trim().length > 0 ? rawName : `Équipe ${index + 1}`;
   });
 
@@ -218,15 +227,15 @@ export default function Lobby({ state, isHost, onUpdate, onRenameTeam, onStart, 
               </div>
             </div>
           )}
-          {mode === 'solo' && (
+          {(mode === 'solo' || mode === 'teams') && (
             <label className="block">
-              <span className="text-sm text-white/60">Nom de l'équipe</span>
+              <span className="text-sm text-white/60">{mode === 'solo' ? 'Nom de l’équipe' : 'Pseudo de l’hôte'}</span>
               <input
                 type="text"
                 maxLength={16}
                 value={teamName}
                 onChange={(event) => setTeamName(event.target.value)}
-                onBlur={() => onRenameTeam(teamName)}
+                onBlur={() => onRenameTeam(teamName.trim() || 'Sur place')}
                 className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white outline-none focus:border-neon"
               />
             </label>
@@ -243,10 +252,15 @@ export default function Lobby({ state, isHost, onUpdate, onRenameTeam, onStart, 
                   <input
                     type="text"
                     maxLength={20}
-                    value={teamNameLabel}
+                    value={teamDrafts[index] ?? teamNameLabel}
                     onChange={(event) => {
-                      const nextNames = [...(settings.teamNames ?? [])];
-                      nextNames[index] = event.target.value || `Équipe ${index + 1}`;
+                      const nextDrafts = [...teamDrafts];
+                      nextDrafts[index] = event.target.value;
+                      setTeamDrafts(nextDrafts);
+                      const nextNames = Array.from({ length: settings.teamCount ?? 2 }, (_, draftIndex) => {
+                        const value = draftIndex === index ? event.target.value : teamDrafts[draftIndex] ?? settings.teamNames?.[draftIndex] ?? '';
+                        return value ?? '';
+                      });
                       onUpdate({ teamNames: nextNames });
                     }}
                     className="w-full rounded-lg border border-white/10 bg-black/10 px-3 py-2 text-white outline-none focus:border-neon"

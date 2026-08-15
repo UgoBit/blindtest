@@ -185,7 +185,7 @@ export default function App() {
     return <Home initialCode={codeFromUrl()} error={error} onCreate={createRoom} onJoin={joinRoom} />;
   }
 
-  const hostPlaying = isHost && (state.settings.mode === 'solo' || state.settings.hostPlays);
+  const hostPlaying = isHost && (state.settings.mode === 'solo' || state.settings.mode === 'teams' || state.settings.hostPlays);
   const hostMember = state.players.find((player) => player.id === playerId);
   const hostCanBuzz = hostPlaying && state.phase === 'listening' && !hostMember?.lockedOut;
 
