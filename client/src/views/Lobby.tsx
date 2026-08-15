@@ -86,23 +86,37 @@ export default function Lobby({ state, isHost, currentPlayerId, onUpdate, onRena
   
 
   if (!isHost) {
-    if (settings.mode === 'teams' && currentPlayerId) {
+    if (settings.mode === 'teams') {
       return (
-        <>
+        <div className="mx-auto flex max-w-md flex-col items-center gap-6 px-4 py-16 text-center">
+          <div className="h-16 w-16 rounded-full bg-gradient-to-r from-accent to-neon" />
+          <h2 className="text-2xl font-bold">En attente du lancement…</h2>
+          <p className="text-white/60">{settings.themes.length} thèmes · {settings.rounds} manches · niveau {settings.difficulty}</p>
+
+          <div className="w-full max-w-xs mt-6">
+            <button
+              className="btn-primary w-full py-3"
+              onClick={() => setPlayerModalOpen(true)}
+            >
+              Choisir mon équipe
+            </button>
+          </div>
+
+          <p className="mt-4 text-sm text-white/60">Ou attends l'hôte pour lancer la partie.</p>
+
           <TeamAssignmentModal
             open={playerModalOpen}
             onClose={() => setPlayerModalOpen(false)}
             state={state}
             currentPlayerId={currentPlayerId}
             isHost={false}
-            allowClose={false}
+            allowClose={true}
             onAssignTeam={(playerId, team) => {
               onAssignTeam(playerId, team);
-              // close the forced modal after selection
               setPlayerModalOpen(false);
             }}
           />
-        </>
+        </div>
       );
     }
     return (
