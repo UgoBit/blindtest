@@ -12,7 +12,7 @@ export default function Home({ initialCode, error, onCreate, onJoin }: Props) {
   const [name, setName] = useState('');
 
   return (
-    <div className="mx-auto flex max-w-4xl flex-col gap-8 px-4 py-10">
+    <div className="mx-auto flex w-full max-w-4xl flex-col gap-8 px-4 py-10 overflow-x-hidden">
       <header className="text-center">
         <h1 className="text-5xl font-black tracking-tight">
           Blind<span className="text-neon">test</span>
@@ -43,14 +43,14 @@ export default function Home({ initialCode, error, onCreate, onJoin }: Props) {
             <p className="mt-1 text-sm text-white/60">Votre téléphone devient un buzzer.</p>
           </div>
           <input
-            className="rounded-xl bg-white/10 px-4 py-3 font-mono text-2xl uppercase tracking-[0.3em] outline-none focus:ring-2 focus:ring-accent"
+            className="w-full rounded-xl bg-white/10 px-4 py-3 font-mono text-2xl uppercase tracking-[0.3em] outline-none focus:ring-2 focus:ring-accent"
             placeholder="CODE"
             maxLength={4}
             value={code}
             onChange={(event) => setCode(event.target.value.toUpperCase())}
           />
           <input
-            className="rounded-xl bg-white/10 px-4 py-3 outline-none focus:ring-2 focus:ring-accent"
+            className="w-full rounded-xl bg-white/10 px-4 py-3 outline-none focus:ring-2 focus:ring-accent"
             placeholder="Votre pseudo"
             maxLength={16}
             value={name}
