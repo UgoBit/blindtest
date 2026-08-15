@@ -29,6 +29,8 @@ export interface HostTrack extends PublicTrack {
   title: string;
   artist: string;
   previewUrl: string;
+  /** Offset in seconds the host should resume the clip from (0 for a fresh round). */
+  startAt: number;
 }
 
 export type Difficulty = 'facile' | 'moyen' | 'difficile' | 'mixte';
