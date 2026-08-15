@@ -7,6 +7,7 @@ import Lobby from './views/Lobby';
 import HostGame from './views/HostGame';
 import PlayerGame from './views/PlayerGame';
 import Finished from './views/Finished';
+import InfoModal from './components/InfoModal';
 
 const codeFromUrl = (): string => {
   const match = window.location.pathname.match(/^\/join\/([A-Za-z0-9]{4})/);
@@ -26,6 +27,7 @@ export default function App() {
   const [isHost, setIsHost] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [autoplayBlocked, setAutoplayBlocked] = useState(false);
+  const [roomClosedOpen, setRoomClosedOpen] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const playAudio = useCallback(() => {
@@ -55,11 +57,17 @@ export default function App() {
     socket.on('room_state', onState);
     socket.on('host_track', onTrack);
     socket.on('error_message', onError);
+    socket.on('room_closed', () => {
+      // Show modal to inform users the room was closed; they can return to home.
+      setRoomClosedOpen(true);
+      setError("La partie a été annulée par l'hôte.");
+    });
     socket.on('audio', onAudio);
     return () => {
       socket.off('room_state', onState);
       socket.off('host_track', onTrack);
       socket.off('error_message', onError);
+      socket.off('room_closed');
       socket.off('audio', onAudio);
     };
   }, [playAudio]);
@@ -158,6 +166,33 @@ export default function App() {
 
   return (
     <>
+      <InfoModal
+        open={roomClosedOpen}
+        title="Partie annulée"
+        description="L'hôte a annulé la partie. Vous allez être redirigé vers l'accueil."
+        buttonLabel="Retour à l'accueil"
+        onClose={() => {
+          clearSession();
+          setState(null);
+          setPlayerId(null);
+          setIsHost(false);
+          setRoomClosedOpen(false);
+          window.history.replaceState(null, '', '/');
+        }}
+      />
+      <div className="mx-auto max-w-6xl px-4 py-4">
+        <button
+          className="btn-ghost"
+          onClick={() => {
+            clearSession();
+            setState(null);
+            setPlayerId(null);
+            window.history.replaceState(null, '', '/');
+          }}
+        >
+          Accueil
+        </button>
+      </div>
       {/* Only the host device outputs sound; players just buzz. */}
       {isHost && <audio ref={audioRef} preload="auto" onError={() => socket.emit('preview_failed')} />}
 
@@ -194,6 +229,13 @@ export default function App() {
               onJudge={(title, artist) => socket.emit('judge', { title, artist })}
               onSkip={() => socket.emit('skip')}
               onNext={() => socket.emit('next_round')}
+              onCancel={() => {
+                socket.emit('close_room');
+                clearSession();
+                setState(null);
+                setPlayerId(null);
+                window.history.replaceState(null, '', '/');
+              }}
             />
             {hostPlaying && (
               <div className="mx-auto max-w-6xl px-4 pb-10">

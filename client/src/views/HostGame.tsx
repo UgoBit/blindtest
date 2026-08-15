@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import type { HostTrack, RoomState } from '../../../shared/types';
 import Scores from '../components/Scores';
+import ConfirmModal from '../components/ConfirmModal';
 
 interface Props {
   state: RoomState;
@@ -7,11 +9,13 @@ interface Props {
   onJudge: (title: boolean, artist: boolean) => void;
   onSkip: () => void;
   onNext: () => void;
+  onCancel: () => void;
 }
 
-export default function HostGame({ state, track, onJudge, onSkip, onNext }: Props) {
+export default function HostGame({ state, track, onJudge, onSkip, onNext, onCancel }: Props) {
   const buzzer = state.players.find((player) => player.id === state.buzzedBy) ?? null;
   const answer = state.answer;
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   return (
     <div className="mx-auto grid max-w-6xl gap-6 px-4 py-8 lg:grid-cols-[1fr_300px]">
@@ -91,6 +95,24 @@ export default function HostGame({ state, track, onJudge, onSkip, onNext }: Prop
       <aside className="card">
         <h3 className="mb-3 font-bold">Scores</h3>
         <Scores players={state.players} highlight={state.buzzedBy} />
+        <div className="mt-4">
+          <>
+            <button className="btn bg-red-600 w-full" onClick={() => setConfirmOpen(true)}>
+              Annuler la partie
+            </button>
+            <ConfirmModal
+              open={confirmOpen}
+              title="Annuler la partie"
+              description="Tous les joueurs seront déconnectés et la partie sera supprimée."
+              confirmLabel="Annuler la partie"
+              onConfirm={() => {
+                setConfirmOpen(false);
+                onCancel();
+              }}
+              onCancel={() => setConfirmOpen(false)}
+            />
+          </>
+        </div>
       </aside>
     </div>
   );

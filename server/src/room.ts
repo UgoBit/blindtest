@@ -306,4 +306,27 @@ export class Room {
     this.clearTimer();
     rooms.delete(this.code);
   }
+
+  /** Close the room: notify clients, disconnect sockets and remove from registry. */
+  close(): void {
+    this.clearTimer();
+    try {
+      this.io.to(this.code).emit('room_closed');
+      for (const member of this.players.values()) {
+        if (!member.socketId) continue;
+        // Try to get the socket instance and disconnect it.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const socket = (this.io as any).sockets?.sockets?.get?.(member.socketId as string);
+        if (socket && typeof socket.disconnect === 'function') {
+          try {
+            socket.disconnect(true);
+          } catch (e) {
+            // ignore
+          }
+        }
+      }
+    } finally {
+      rooms.delete(this.code);
+    }
+  }
 }

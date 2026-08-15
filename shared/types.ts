@@ -67,6 +67,8 @@ export interface ServerToClientEvents {
   room_state: (state: RoomState) => void;
   host_track: (track: HostTrack) => void;
   error_message: (message: string) => void;
+  /** Emitted when the room is closed by the host. */
+  room_closed: () => void;
   /** Tells the host device to (re)start or stop audio playback. */
   audio: (command: { action: 'play' | 'pause' | 'stop'; at: number }) => void;
 }
@@ -87,6 +89,7 @@ export interface ClientToServerEvents {
   skip: () => void;
   next_round: () => void;
   restart: () => void;
+  close_room: () => void;
   preview_failed: () => void;
   resync: () => void;
   kick: (playerId: string) => void;

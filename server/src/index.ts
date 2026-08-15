@@ -136,6 +136,14 @@ io.on('connection', (socket) => {
     if (isHost()) room()?.restart();
   });
 
+  socket.on('close_room', () => {
+    if (!isHost()) return;
+    const current = room();
+    if (!current) return;
+    io.to(current.code).emit('error_message', "La partie a été annulée par l'hôte.");
+    current.close();
+  });
+
   socket.on('preview_failed', () => {
     if (isHost()) void room()?.retryPreview();
   });
