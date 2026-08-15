@@ -97,6 +97,15 @@ export class Room {
     return true;
   }
 
+  renameHost(playerId: string, name: string): boolean {
+    const member = this.players.get(playerId);
+    if (!member || !member.isHost || playerId !== this.hostId || this.phase !== 'lobby') return false;
+    member.name = name;
+    this.touch();
+    this.broadcast();
+    return true;
+  }
+
   kick(playerId: string): void {
     if (playerId === this.hostId) return;
     this.players.delete(playerId);

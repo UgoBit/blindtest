@@ -7,6 +7,7 @@ interface Props {
   state: RoomState;
   isHost: boolean;
   onUpdate: (settings: Partial<RoomState['settings']>) => void;
+  onRenameTeam: (name: string) => void;
   onStart: () => void;
   onKick: (playerId: string) => void;
 }
@@ -17,8 +18,9 @@ const CATEGORY_LABELS: Record<Theme['category'], string> = {
   culture: 'Culture',
 };
 
-export default function Lobby({ state, isHost, onUpdate, onStart, onKick }: Props) {
+export default function Lobby({ state, isHost, onUpdate, onRenameTeam, onStart, onKick }: Props) {
   const [themes, setThemes] = useState<Theme[]>([]);
+  const [teamName, setTeamName] = useState('Sur place');
   const { settings, players } = state;
 
   useEffect(() => {
@@ -36,6 +38,12 @@ export default function Lobby({ state, isHost, onUpdate, onStart, onKick }: Prop
   };
 
   const guests = players.filter((player) => !player.isHost);
+  const host = players.find((player) => player.isHost);
+  const canStart = guests.length > 0 || settings.hostPlays;
+
+  useEffect(() => {
+    if (host?.name) setTeamName(host.name);
+  }, [host?.name]);
 
   if (!isHost) {
     return (
@@ -114,7 +122,7 @@ export default function Lobby({ state, isHost, onUpdate, onStart, onKick }: Prop
           </div>
         </section>
 
-        <section className="card grid gap-5 sm:grid-cols-3">
+        <section className="card grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
           <label className="block">
             <span className="text-sm text-white/60">Manches : {settings.rounds}</span>
             <input
@@ -144,12 +152,32 @@ export default function Lobby({ state, isHost, onUpdate, onStart, onKick }: Prop
               onChange={(event) => onUpdate({ hostPlays: event.target.checked })}
               className="h-5 w-5 accent-neon"
             />
-            <span className="text-sm">Je joue aussi (sinon je suis arbitre)</span>
+            <span className="text-sm">
+              <span className="block">Buzzer sur cet écran</span>
+              <span className="block text-xs text-white/50">Un buzzer et un score partagés autour de l'écran</span>
+            </span>
           </label>
+          {settings.hostPlays && (
+            <label className="block">
+              <span className="text-sm text-white/60">Nom de l'équipe</span>
+              <input
+                type="text"
+                maxLength={16}
+                value={teamName}
+                onChange={(event) => setTeamName(event.target.value)}
+                onBlur={() => onRenameTeam(teamName)}
+                className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white outline-none focus:border-neon"
+              />
+            </label>
+          )}
         </section>
 
-        <button className="btn-primary w-full text-lg" disabled={guests.length === 0} onClick={onStart}>
-          {guests.length === 0 ? 'En attente de joueurs…' : `Lancer la partie (${guests.length} joueurs)`}
+        <button className="btn-primary w-full text-lg" disabled={!canStart} onClick={onStart}>
+          {canStart
+            ? `Lancer la partie (${guests.length + (settings.hostPlays ? 1 : 0)} ${
+                guests.length + (settings.hostPlays ? 1 : 0) > 1 ? 'buzzers' : 'buzzer'
+              })`
+            : 'En attente de joueurs…'}
         </button>
       </div>
 
