@@ -93,6 +93,7 @@ export default function Lobby({ state, isHost, currentPlayerId, onUpdate, onRena
             onClose={() => {}}
             state={state}
             currentPlayerId={currentPlayerId}
+            isHost={false}
             onAssignTeam={onAssignTeam}
           />
         </>
@@ -429,7 +430,8 @@ export default function Lobby({ state, isHost, currentPlayerId, onUpdate, onRena
             open={teamModalOpen}
             onClose={() => setTeamModalOpen(false)}
             state={state}
-            currentPlayerId={currentPlayerId}
+            /** Host opens manager view (no personal id) */
+            isHost={true}
             onAssignTeam={onAssignTeam}
           />
         )}
