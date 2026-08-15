@@ -13,12 +13,19 @@ const codeFromUrl = (): string => {
   return match ? match[1].toUpperCase() : '';
 };
 
+const isAutoplayBlocked = (reason: unknown): boolean =>
+  typeof reason === 'object' &&
+  reason !== null &&
+  'name' in reason &&
+  reason.name === 'NotAllowedError';
+
 export default function App() {
   const [state, setState] = useState<RoomState | null>(null);
   const [track, setTrack] = useState<HostTrack | null>(null);
   const [playerId, setPlayerId] = useState<string | null>(null);
   const [isHost, setIsHost] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [autoplayBlocked, setAutoplayBlocked] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
@@ -28,7 +35,18 @@ export default function App() {
     const onAudio = ({ action }: { action: 'play' | 'pause' | 'stop' }) => {
       const audio = audioRef.current;
       if (!audio) return;
-      if (action === 'play') void audio.play().catch(() => socket.emit('preview_failed'));
+      if (action === 'play') {
+        void audio
+          .play()
+          .then(() => setAutoplayBlocked(false))
+          .catch((reason: unknown) => {
+            if (isAutoplayBlocked(reason)) {
+              setAutoplayBlocked(true);
+              return;
+            }
+            socket.emit('preview_failed');
+          });
+      }
       else audio.pause();
     };
 
@@ -67,9 +85,32 @@ export default function App() {
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio || !track) return;
+    if (audio.getAttribute('src') === track.previewUrl) return;
+
+    const seek = () => {
+      audio.currentTime = track.startAt;
+    };
+    audio.addEventListener('loadedmetadata', seek, { once: true });
     audio.src = track.previewUrl;
     audio.load();
+    if (audio.readyState >= HTMLMediaElement.HAVE_METADATA) seek();
+    return () => audio.removeEventListener('loadedmetadata', seek);
   }, [track]);
+
+  const resumeAudio = useCallback(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    void audio
+      .play()
+      .then(() => setAutoplayBlocked(false))
+      .catch((reason: unknown) => {
+        if (isAutoplayBlocked(reason)) {
+          setAutoplayBlocked(true);
+          return;
+        }
+        socket.emit('preview_failed');
+      });
+  }, []);
 
   const createRoom = useCallback(() => {
     const settings: RoomSettings = {
@@ -119,6 +160,14 @@ export default function App() {
         <p className="mx-auto mt-4 max-w-lg rounded-xl bg-red-500/20 px-4 py-2 text-center text-red-200">
           {error}
         </p>
+      )}
+
+      {isHost && autoplayBlocked && (
+        <div className="mx-auto mt-4 max-w-lg px-4">
+          <button className="btn-primary w-full" onClick={resumeAudio}>
+            Reprendre le son
+          </button>
+        </div>
       )}
 
       {state.phase === 'lobby' && (

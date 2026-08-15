@@ -131,6 +131,13 @@ export class Room {
     this.timer = null;
   }
 
+  /** Seconds of the clip already elapsed, used to resume a host that reconnected. */
+  private elapsedSeconds(): number {
+    if (this.phase !== 'listening' && this.phase !== 'buzzed') return 0;
+    const remainingMs = this.phase === 'buzzed' ? this.remainingMs : Math.max(0, this.clipEndsAt - Date.now());
+    return Math.max(0, this.settings.clipSeconds - remainingMs / 1000);
+  }
+
   private sendHostTrack(previewUrl?: string): void {
     const track = this.currentTrack;
     const socketId = this.hostSocketId;
@@ -143,7 +150,18 @@ export class Room {
       title: track.title,
       artist: track.artist,
       previewUrl: previewUrl ?? track.previewUrl,
+      startAt: this.elapsedSeconds(),
     });
+  }
+
+  /** Restores audio on a host device that reconnected in the middle of a round. */
+  resyncHost(): void {
+    if (this.phase !== 'listening' && this.phase !== 'buzzed') return;
+    this.sendHostTrack();
+    const socketId = this.hostSocketId;
+    if (this.phase === 'listening' && socketId) {
+      this.io.to(socketId).emit('audio', { action: 'play', at: Date.now() });
+    }
   }
 
   async start(): Promise<void> {

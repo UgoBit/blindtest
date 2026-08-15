@@ -101,6 +101,7 @@ io.on('connection', (socket) => {
     socket.join(target.code);
     ack({ ok: true, playerId });
     target.broadcast();
+    if (rejoining?.isHost) target.resyncHost();
   });
 
   socket.on('update_settings', (settings) => {
