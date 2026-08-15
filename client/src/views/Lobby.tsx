@@ -85,48 +85,62 @@ export default function Lobby({ state, isHost, currentPlayerId, onUpdate, onRena
   if (!isHost) {
     if (settings.mode === 'teams' && currentPlayerId) {
       return (
-        <div className="mx-auto max-w-md px-4 py-16">
-          <div className="card space-y-5 text-center">
-            <div className="mx-auto inline-flex rounded-full border border-neon/40 bg-neon/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.24em] text-neon">
-              Choix d’équipe
-            </div>
-            <div>
-              <h2 className="text-2xl font-bold">Tu es prêt à jouer ?</h2>
-              <p className="mt-2 text-sm text-white/60">Choisis ton équipe avant que la partie ne démarre.</p>
-            </div>
-
-            <label className="block text-left">
-              <span className="mb-2 block text-xs uppercase tracking-[0.2em] text-white/40">Mon équipe</span>
-              <select
-                value={String(currentPlayer?.team ?? 1)}
-                onChange={(event) => onAssignTeam(currentPlayerId, Number(event.target.value))}
-                className="w-full rounded-xl border border-white/10 bg-black/10 px-3 py-3 text-base text-white outline-none transition focus:border-neon"
-              >
-                {teamLabels.map((label, index) => (
-                  <option key={`player-team-${index}`} value={index + 1}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <div className="grid gap-2 text-left">
-              {teamLabels.map((label, index) => (
-                <div key={`team-summary-${index}`} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/70">
-                  <span className="font-semibold text-white">{label}</span>
-                  <span className="ml-2 text-white/50">({playersByTeam[index]?.length ?? 0} joueur(s))</span>
-                </div>
-              ))}
+        <div className="mx-auto max-w-md px-4 py-12">
+          <div className="card space-y-5 border border-white/10 bg-card/90 p-5 shadow-[0_24px_80px_rgba(18,12,35,0.45)]">
+            <div className="flex items-center justify-between gap-3">
+              <span className="inline-flex rounded-full border border-neon/40 bg-neon/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-neon">
+                Choix d’équipe
+              </span>
+              <span className="rounded-full bg-white/5 px-2.5 py-1 text-[10px] uppercase tracking-[0.2em] text-white/45">
+                {settings.teamCount} équipes
+              </span>
             </div>
 
-            <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-left text-sm text-white/60">
-              <p className="mb-2 text-xs uppercase tracking-[0.2em] text-white/40">Joueurs déjà présents</p>
-              <ul className="space-y-1">
+            <div className="space-y-2 text-left">
+              <h2 className="text-2xl font-bold text-white">Tu es prêt à jouer ?</h2>
+              <p className="text-sm text-white/60">Choisis ton équipe avant le lancement de la partie.</p>
+            </div>
+
+            <div className="space-y-3">
+              {teamLabels.map((label, index) => {
+                const teamNumber = index + 1;
+                const selected = (currentPlayer?.team ?? 1) === teamNumber;
+                const count = playersByTeam[index]?.length ?? 0;
+
+                return (
+                  <button
+                    key={`player-team-${index}`}
+                    type="button"
+                    onClick={() => onAssignTeam(currentPlayerId, teamNumber)}
+                    className={[
+                      'team-choice w-full rounded-2xl border p-4 text-left transition',
+                      selected
+                        ? 'border-neon bg-gradient-to-r from-neon/20 to-accent/20 shadow-[0_0_30px_rgba(124,92,255,0.18)]'
+                        : 'border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/8',
+                    ].join(' ')}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-[10px] uppercase tracking-[0.2em] text-white/45">Équipe {teamNumber}</p>
+                        <p className="mt-1 text-lg font-semibold text-white">{label}</p>
+                      </div>
+                      <span className="rounded-full border border-white/10 bg-black/10 px-2.5 py-1 text-xs text-white/60">
+                        {count} {count <= 1 ? 'joueur' : 'joueurs'}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-3 text-left text-sm text-white/60">
+              <p className="mb-2 text-[10px] uppercase tracking-[0.2em] text-white/40">Joueurs déjà présents</p>
+              <ul className="space-y-2">
                 {guests.length === 0 ? (
-                  <li>Tu es le premier joueur à rejoindre.</li>
+                  <li className="text-white/50">Tu es le premier joueur à rejoindre.</li>
                 ) : (
                   guests.map((player) => (
-                    <li key={player.id} className="flex items-center justify-between gap-3">
+                    <li key={player.id} className="flex items-center justify-between gap-3 rounded-xl bg-black/10 px-2.5 py-2">
                       <span>{player.name}</span>
                       <span className="text-xs text-white/50">{teamLabels[(player.team ?? 1) - 1] ?? `Équipe ${(player.team ?? 1)}`}</span>
                     </li>
