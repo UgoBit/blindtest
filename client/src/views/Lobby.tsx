@@ -84,27 +84,34 @@ export default function Lobby({ state, isHost, currentPlayerId, onUpdate, onRena
 
   if (!isHost) {
     if (settings.mode === 'teams' && currentPlayerId) {
+      const selectedTeam = currentPlayer?.team ?? 1;
+
       return (
         <div className="mx-auto max-w-md px-4 py-12">
           <div className="card space-y-5 border border-white/10 bg-card/90 p-5 shadow-[0_24px_80px_rgba(18,12,35,0.45)]">
             <div className="flex items-center justify-between gap-3">
               <span className="inline-flex rounded-full border border-neon/40 bg-neon/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-neon">
-                Choix d’équipe
+                Équipe
               </span>
               <span className="rounded-full bg-white/5 px-2.5 py-1 text-[10px] uppercase tracking-[0.2em] text-white/45">
-                {settings.teamCount} équipes
+                {settings.teamCount} groupes
               </span>
             </div>
 
             <div className="space-y-2 text-left">
-              <h2 className="text-2xl font-bold text-white">Tu es prêt à jouer ?</h2>
-              <p className="text-sm text-white/60">Choisis ton équipe avant le lancement de la partie.</p>
+              <h2 className="text-2xl font-bold text-white">Choisis ton équipe</h2>
+              <p className="text-sm text-white/60">Tu peux changer de groupe avant le lancement de la partie.</p>
+            </div>
+
+            <div className="rounded-2xl border border-neon/25 bg-neon/8 p-3 text-left">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-white/45">Ton choix actuel</p>
+              <p className="mt-2 text-xl font-bold text-white">{teamLabels[selectedTeam - 1] ?? `Équipe ${selectedTeam}`}</p>
             </div>
 
             <div className="space-y-3">
               {teamLabels.map((label, index) => {
                 const teamNumber = index + 1;
-                const selected = (currentPlayer?.team ?? 1) === teamNumber;
+                const selected = selectedTeam === teamNumber;
                 const count = playersByTeam[index]?.length ?? 0;
 
                 return (
@@ -113,7 +120,7 @@ export default function Lobby({ state, isHost, currentPlayerId, onUpdate, onRena
                     type="button"
                     onClick={() => onAssignTeam(currentPlayerId, teamNumber)}
                     className={[
-                      'team-choice w-full rounded-2xl border p-4 text-left transition',
+                      'w-full rounded-2xl border p-4 text-left transition active:scale-[0.99]',
                       selected
                         ? 'border-neon bg-gradient-to-r from-neon/20 to-accent/20 shadow-[0_0_30px_rgba(124,92,255,0.18)]'
                         : 'border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/8',
@@ -134,10 +141,10 @@ export default function Lobby({ state, isHost, currentPlayerId, onUpdate, onRena
             </div>
 
             <div className="rounded-2xl border border-white/10 bg-white/5 p-3 text-left text-sm text-white/60">
-              <p className="mb-2 text-[10px] uppercase tracking-[0.2em] text-white/40">Joueurs déjà présents</p>
+              <p className="mb-2 text-[10px] uppercase tracking-[0.2em] text-white/40">Participants</p>
               <ul className="space-y-2">
                 {guests.length === 0 ? (
-                  <li className="text-white/50">Tu es le premier joueur à rejoindre.</li>
+                  <li className="text-white/50">Tu es le premier participant.</li>
                 ) : (
                   guests.map((player) => (
                     <li key={player.id} className="flex items-center justify-between gap-3 rounded-xl bg-black/10 px-2.5 py-2">
@@ -394,9 +401,10 @@ export default function Lobby({ state, isHost, currentPlayerId, onUpdate, onRena
           <QrJoin code={state.code} />
         </div>
         <div className="card">
-          <h3 className="mb-3 font-bold">Joueurs connectés</h3>
+          <h3 className="mb-3 font-bold">{mode === 'teams' ? 'Affectation des équipes' : 'Joueurs connectés'}</h3>
           {mode === 'teams' ? (
             <div className="space-y-4">
+              <p className="text-xs uppercase tracking-widest text-white/40">Définir qui va dans quelle équipe</p>
               {settings.hostPlays && host && (
                 <div className="rounded-xl border border-white/10 bg-white/5 p-3">
                   <div className="mb-2 flex items-center justify-between gap-2">
@@ -421,12 +429,15 @@ export default function Lobby({ state, isHost, currentPlayerId, onUpdate, onRena
               )}
               {playersByTeam.map((teamPlayers, index) => (
                 <div key={`team-${index + 1}`} className="rounded-xl border border-white/10 bg-white/5 p-3">
-                  <p className="mb-2 text-xs uppercase tracking-widest text-white/40">
-                    {teamLabels[index] ?? `Équipe ${index + 1}`}
-                  </p>
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <p className="text-xs uppercase tracking-widest text-white/40">
+                      {teamLabels[index] ?? `Équipe ${index + 1}`}
+                    </p>
+                    <span className="text-xs text-white/50">{teamPlayers.length} joueur(s)</span>
+                  </div>
                   <ul className="space-y-2">
                     {teamPlayers.length === 0 ? (
-                      <li className="text-sm text-white/40">Aucun joueur dans cette équipe.</li>
+                      <li className="text-sm text-white/40">Aucune personne dans cette équipe.</li>
                     ) : (
                       teamPlayers.map((player) => (
                         <li key={player.id} className="flex items-center justify-between gap-3 rounded-lg bg-black/10 px-2 py-1.5">
