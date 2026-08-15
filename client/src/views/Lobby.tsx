@@ -6,6 +6,7 @@ import QrJoin from '../components/QrJoin';
 interface Props {
   state: RoomState;
   isHost: boolean;
+  currentPlayerId?: string;
   onUpdate: (settings: Partial<RoomState['settings']>) => void;
   onRenameTeam: (name: string) => void;
   onAssignTeam: (playerId: string, team: number | null) => void;
@@ -19,7 +20,7 @@ const CATEGORY_LABELS: Record<Theme['category'], string> = {
   culture: 'Culture',
 };
 
-export default function Lobby({ state, isHost, onUpdate, onRenameTeam, onAssignTeam, onStart, onKick }: Props) {
+export default function Lobby({ state, isHost, currentPlayerId, onUpdate, onRenameTeam, onAssignTeam, onStart, onKick }: Props) {
   const [themes, setThemes] = useState<Theme[]>([]);
   const [teamName, setTeamName] = useState('Sur place');
   const [teamDrafts, setTeamDrafts] = useState<string[]>([]);
@@ -79,7 +80,65 @@ export default function Lobby({ state, isHost, onUpdate, onRenameTeam, onAssignT
     return players.filter((player) => (player.team ?? 1) === teamNumber);
   });
 
+  const currentPlayer = currentPlayerId ? players.find((player) => player.id === currentPlayerId) : undefined;
+
   if (!isHost) {
+    if (settings.mode === 'teams' && currentPlayerId) {
+      return (
+        <div className="mx-auto max-w-md px-4 py-16">
+          <div className="card space-y-5 text-center">
+            <div className="mx-auto inline-flex rounded-full border border-neon/40 bg-neon/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.24em] text-neon">
+              Choix d’équipe
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold">Tu es prêt à jouer ?</h2>
+              <p className="mt-2 text-sm text-white/60">Choisis ton équipe avant que la partie ne démarre.</p>
+            </div>
+
+            <label className="block text-left">
+              <span className="mb-2 block text-xs uppercase tracking-[0.2em] text-white/40">Mon équipe</span>
+              <select
+                value={String(currentPlayer?.team ?? 1)}
+                onChange={(event) => onAssignTeam(currentPlayerId, Number(event.target.value))}
+                className="w-full rounded-xl border border-white/10 bg-black/10 px-3 py-3 text-base text-white outline-none transition focus:border-neon"
+              >
+                {teamLabels.map((label, index) => (
+                  <option key={`player-team-${index}`} value={index + 1}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <div className="grid gap-2 text-left">
+              {teamLabels.map((label, index) => (
+                <div key={`team-summary-${index}`} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/70">
+                  <span className="font-semibold text-white">{label}</span>
+                  <span className="ml-2 text-white/50">({playersByTeam[index]?.length ?? 0} joueur(s))</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-left text-sm text-white/60">
+              <p className="mb-2 text-xs uppercase tracking-[0.2em] text-white/40">Joueurs déjà présents</p>
+              <ul className="space-y-1">
+                {guests.length === 0 ? (
+                  <li>Tu es le premier joueur à rejoindre.</li>
+                ) : (
+                  guests.map((player) => (
+                    <li key={player.id} className="flex items-center justify-between gap-3">
+                      <span>{player.name}</span>
+                      <span className="text-xs text-white/50">{teamLabels[(player.team ?? 1) - 1] ?? `Équipe ${(player.team ?? 1)}`}</span>
+                    </li>
+                  ))
+                )}
+              </ul>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="mx-auto flex max-w-md flex-col items-center gap-6 px-4 py-16 text-center">
         <div className="h-16 w-16 animate-pulse rounded-full bg-gradient-to-r from-accent to-neon" />

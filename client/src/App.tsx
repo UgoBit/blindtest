@@ -239,6 +239,7 @@ export default function App() {
         <Lobby
           state={state}
           isHost={isHost}
+          currentPlayerId={playerId}
           onUpdate={(settings) => socket.emit('update_settings', settings)}
           onRenameTeam={(name) => socket.emit('rename_team', name)}
           onAssignTeam={(playerId, team) => socket.emit('assign_team', { playerId, team })}

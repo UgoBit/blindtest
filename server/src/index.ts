@@ -133,7 +133,8 @@ io.on('connection', (socket) => {
 
   socket.on('assign_team', ({ playerId: target, team }) => {
     const current = room();
-    if (!current || !isHost() || current.phase !== 'lobby' || !target) return;
+    if (!current || current.phase !== 'lobby' || !target || !playerId) return;
+    if (!isHost() && target !== playerId) return;
     current.assignTeam(target, team);
   });
 
