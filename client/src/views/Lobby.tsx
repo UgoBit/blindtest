@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { RoomState, Theme } from '../../../shared/types';
+import { DIFFICULTIES } from '../../../shared/types';
 import QrJoin from '../components/QrJoin';
 
 interface Props {
@@ -42,7 +43,7 @@ export default function Lobby({ state, isHost, onUpdate, onStart, onKick }: Prop
         <div className="h-16 w-16 animate-pulse rounded-full bg-gradient-to-r from-accent to-neon" />
         <h2 className="text-2xl font-bold">En attente du lancement…</h2>
         <p className="text-white/60">
-          Thèmes choisis par l&apos;hôte : {settings.themes.length} · {settings.rounds} manches
+          {settings.themes.length} thèmes · {settings.rounds} manches · niveau {settings.difficulty}
         </p>
         <ul className="flex flex-wrap justify-center gap-2">
           {guests.map((player) => (
@@ -88,6 +89,29 @@ export default function Lobby({ state, isHost, onUpdate, onStart, onKick }: Prop
               </div>
             </div>
           ))}
+        </section>
+
+        <section className="card">
+          <h2 className="mb-3 text-xl font-bold">Niveau</h2>
+          <div className="grid gap-2 sm:grid-cols-4">
+            {DIFFICULTIES.map((level) => {
+              const active = settings.difficulty === level.id;
+              return (
+                <button
+                  key={level.id}
+                  onClick={() => onUpdate({ difficulty: level.id })}
+                  className={`rounded-xl border p-3 text-left transition ${
+                    active
+                      ? 'border-neon bg-neon/20'
+                      : 'border-white/10 bg-white/5 hover:bg-white/10'
+                  }`}
+                >
+                  <span className="block font-semibold">{level.label}</span>
+                  <span className="block text-xs text-white/50">{level.hint}</span>
+                </button>
+              );
+            })}
+          </div>
         </section>
 
         <section className="card grid gap-5 sm:grid-cols-3">

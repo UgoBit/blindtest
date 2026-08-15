@@ -31,8 +31,18 @@ export interface HostTrack extends PublicTrack {
   previewUrl: string;
 }
 
+export type Difficulty = 'facile' | 'moyen' | 'difficile' | 'mixte';
+
+export const DIFFICULTIES: { id: Difficulty; label: string; hint: string }[] = [
+  { id: 'facile', label: 'Facile', hint: 'les tubes que tout le monde connaît' },
+  { id: 'moyen', label: 'Moyen', hint: 'des titres connus, mais moins évidents' },
+  { id: 'difficile', label: 'Difficile', hint: 'les morceaux plus pointus du thème' },
+  { id: 'mixte', label: 'Mixte', hint: 'un peu de tout' },
+];
+
 export interface RoomSettings {
   themes: string[];
+  difficulty: Difficulty;
   rounds: number;
   clipSeconds: number;
   hostPlays: boolean;

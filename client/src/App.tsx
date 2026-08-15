@@ -72,7 +72,13 @@ export default function App() {
   }, [track]);
 
   const createRoom = useCallback(() => {
-    const settings: RoomSettings = { themes: ['top'], rounds: 10, clipSeconds: 30, hostPlays: false };
+    const settings: RoomSettings = {
+      themes: ['top'],
+      difficulty: 'moyen',
+      rounds: 10,
+      clipSeconds: 30,
+      hostPlays: false,
+    };
     socket.emit('create_room', settings, (res) => {
       if (!res.ok) {
         setError(res.error);

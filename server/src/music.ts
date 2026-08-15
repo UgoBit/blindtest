@@ -1,3 +1,4 @@
+import type { Difficulty } from '../../shared/types.js';
 import { THEME_BY_ID, type ThemeDefinition } from './themes.js';
 
 export interface Track {
@@ -6,6 +7,8 @@ export interface Track {
   artist: string;
   cover: string | null;
   previewUrl: string;
+  /** Deezer popularity score (0-1 000 000), used to grade difficulty. */
+  rank: number;
 }
 
 interface DeezerTrack {
@@ -13,6 +16,7 @@ interface DeezerTrack {
   title: string;
   title_short?: string;
   preview?: string;
+  rank?: number;
   artist?: { name?: string };
   album?: { cover_medium?: string; cover_big?: string };
 }
@@ -45,6 +49,7 @@ function toTrack(t: DeezerTrack): Track | null {
     artist: t.artist.name,
     cover: t.album?.cover_big ?? t.album?.cover_medium ?? null,
     previewUrl: t.preview,
+    rank: t.rank ?? 0,
   };
 }
 
@@ -64,12 +69,22 @@ async function loadPool(theme: ThemeDefinition): Promise<Track[]> {
 
   const tracks: Track[] = [];
   if (theme.source.kind === 'chart') {
-    const data = await fetchJson<{ data?: DeezerTrack[] }>(
-      `${DEEZER}/chart/${theme.source.genreId}/tracks?limit=100`,
-    );
+    const genreId = theme.source.genreId;
+    const data = await fetchJson<{ data?: DeezerTrack[] }>(`${DEEZER}/chart/${genreId}/tracks?limit=100`);
     for (const t of data?.data ?? []) {
       const track = toTrack(t);
       if (track) tracks.push(track);
+    }
+    // Genre radios widen the popularity spread so the hard tier is not just chart hits.
+    const radios = await fetchJson<{ data?: { id: number }[] }>(`${DEEZER}/genre/${genreId}/radios`);
+    for (const radio of (radios?.data ?? []).slice(0, 3)) {
+      const radioTracks = await fetchJson<{ data?: DeezerTrack[] }>(
+        `${DEEZER}/radio/${radio.id}/tracks?limit=50`,
+      );
+      for (const t of radioTracks?.data ?? []) {
+        const track = toTrack(t);
+        if (track) tracks.push(track);
+      }
     }
   } else {
     for (const query of theme.source.queries) {
@@ -89,8 +104,10 @@ async function loadPool(theme: ThemeDefinition): Promise<Track[]> {
     }
   }
 
-  poolCache.set(theme.id, { at: Date.now(), tracks });
-  return tracks;
+  const unique = new Map(tracks.map((track) => [`${normalize(track.title)}|${normalize(track.artist)}`, track]));
+  const pool = [...unique.values()];
+  poolCache.set(theme.id, { at: Date.now(), tracks: pool });
+  return pool;
 }
 
 function shuffle<T>(items: T[]): T[] {
@@ -102,12 +119,31 @@ function shuffle<T>(items: T[]): T[] {
   return out;
 }
 
+/**
+ * Keeps the slice of a theme's pool matching the requested difficulty: tracks are
+ * ranked by popularity, then split into three bands (easiest = most popular).
+ */
+function gradeByDifficulty(pool: Track[], difficulty: Difficulty): Track[] {
+  if (difficulty === 'mixte' || pool.length < 12) return pool;
+  const ranked = [...pool].sort((a, b) => b.rank - a.rank);
+  const band = Math.ceil(ranked.length / 3);
+  if (difficulty === 'facile') return ranked.slice(0, band);
+  if (difficulty === 'moyen') return ranked.slice(band, band * 2);
+  return ranked.slice(band * 2);
+}
+
 /** Builds a playlist of unique tracks drawn evenly from every selected theme. */
-export async function buildPlaylist(themeIds: string[], count: number): Promise<Track[]> {
+export async function buildPlaylist(
+  themeIds: string[],
+  count: number,
+  difficulty: Difficulty = 'mixte',
+): Promise<Track[]> {
   const themes = themeIds.map((id) => THEME_BY_ID.get(id)).filter((t): t is ThemeDefinition => !!t);
   if (themes.length === 0) return [];
 
-  const pools = await Promise.all(themes.map((theme) => loadPool(theme).then(shuffle)));
+  const pools = await Promise.all(
+    themes.map((theme) => loadPool(theme).then((pool) => shuffle(gradeByDifficulty(pool, difficulty)))),
+  );
   const seen = new Set<string>();
   const picked: Track[] = [];
 

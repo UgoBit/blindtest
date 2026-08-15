@@ -5,7 +5,13 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
 import { Server } from 'socket.io';
-import type { ClientToServerEvents, RoomSettings, ServerToClientEvents } from '../../shared/types.js';
+import type {
+  ClientToServerEvents,
+  Difficulty,
+  RoomSettings,
+  ServerToClientEvents,
+} from '../../shared/types.js';
+import { DIFFICULTIES } from '../../shared/types.js';
 import { publicThemes, THEME_BY_ID } from './themes.js';
 import { Room, rooms } from './room.js';
 
@@ -45,8 +51,12 @@ app.get(/^(?!\/api|\/socket\.io).*/, (_req, res) => {
 
 function sanitizeSettings(input: Partial<RoomSettings>): RoomSettings {
   const themes = (input.themes ?? []).filter((id) => THEME_BY_ID.has(id));
+  const difficulty: Difficulty = DIFFICULTIES.some((d) => d.id === input.difficulty)
+    ? (input.difficulty as Difficulty)
+    : 'mixte';
   return {
     themes: themes.length > 0 ? themes.slice(0, 8) : ['top'],
+    difficulty,
     rounds: Math.min(30, Math.max(1, Math.round(input.rounds ?? 10))),
     clipSeconds: Math.min(30, Math.max(5, Math.round(input.clipSeconds ?? 30))),
     hostPlays: input.hostPlays ?? false,

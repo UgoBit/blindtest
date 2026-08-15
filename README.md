@@ -15,6 +15,9 @@ reçoivent jamais ni l'URL audio ni la réponse.
 - Salon avec code à 4 lettres + QR code de connexion
 - L'hôte est arbitre, ou joueur lui aussi (case « Je joue aussi »)
 - Thèmes cumulables : genres, époques (80/90/2000), films, Disney, dessins animés, jeux vidéo, pubs
+- Niveaux facile / moyen / difficile / mixte : chaque thème est trié par popularité Deezer
+  puis découpé en trois paliers (les charts sont complétés par les radios du genre pour que
+  le niveau difficile contienne autre chose que des tubes)
 - Buzzer temps réel (premier arrivé verrouille l'audio), validation titre / artiste par l'hôte
 - Mauvaise réponse = joueur éliminé pour la manche, l'extrait reprend
 - Reconnexion automatique (rafraîchissement, téléphone verrouillé), scores et podium

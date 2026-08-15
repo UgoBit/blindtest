@@ -148,7 +148,11 @@ export class Room {
 
   async start(): Promise<void> {
     if (this.phase !== 'lobby') return;
-    this.playlist = await buildPlaylist(this.settings.themes, this.settings.rounds);
+    this.playlist = await buildPlaylist(
+      this.settings.themes,
+      this.settings.rounds,
+      this.settings.difficulty,
+    );
     if (this.playlist.length === 0) {
       this.io.to(this.code).emit('error_message', "Impossible de charger des extraits pour ces thèmes.");
       return;

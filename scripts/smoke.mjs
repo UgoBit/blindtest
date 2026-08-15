@@ -18,7 +18,7 @@ const wait = (socket, event, predicate = () => true) =>
 const host = connect();
 await wait(host, 'connect');
 const created = await new Promise((resolve) =>
-  host.emit('create_room', { themes: ['top', 'annees80'], rounds: 3, clipSeconds: 10, hostPlays: false }, resolve),
+  host.emit('create_room', { themes: ['top', 'annees80'], difficulty: 'facile', rounds: 3, clipSeconds: 10, hostPlays: false }, resolve),
 );
 console.log('room created', created.code);
 
