@@ -26,6 +26,7 @@ export default function Lobby({ state, isHost, currentPlayerId, onUpdate, onRena
   const [teamName, setTeamName] = useState('Sur place');
   const [teamDrafts, setTeamDrafts] = useState<string[]>([]);
   const [teamModalOpen, setTeamModalOpen] = useState(false);
+  const [playerModalOpen, setPlayerModalOpen] = useState(true);
   const { settings, players } = state;
 
   useEffect(() => {
@@ -89,12 +90,17 @@ export default function Lobby({ state, isHost, currentPlayerId, onUpdate, onRena
       return (
         <>
           <TeamAssignmentModal
-            open={true}
-            onClose={() => {}}
+            open={playerModalOpen}
+            onClose={() => setPlayerModalOpen(false)}
             state={state}
             currentPlayerId={currentPlayerId}
             isHost={false}
-            onAssignTeam={onAssignTeam}
+            allowClose={false}
+            onAssignTeam={(playerId, team) => {
+              onAssignTeam(playerId, team);
+              // close the forced modal after selection
+              setPlayerModalOpen(false);
+            }}
           />
         </>
       );
