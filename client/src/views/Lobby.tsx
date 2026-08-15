@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { RoomState, Theme } from '../../../shared/types';
 import { DIFFICULTIES } from '../../../shared/types';
 import QrJoin from '../components/QrJoin';
@@ -80,13 +80,35 @@ export default function Lobby({ state, isHost, currentPlayerId, onUpdate, onRena
 
   const playersByTeam = Array.from({ length: Math.max(1, settings.teamCount ?? 2) }, (_, index) => {
     const teamNumber = index + 1;
-    return players.filter((player) => (player.team ?? 1) === teamNumber);
+    return players.filter((player) => (player.team ?? 1) === teamNumber && !(player.isHost && !settings.hostPlays));
   });
+
+  const prevTeamsRef = useRef<Record<string, number | null>>({});
+  const [changedPlayers, setChangedPlayers] = useState<string[]>([]);
+
+  useEffect(() => {
+    const prev = prevTeamsRef.current;
+    const nextMap: Record<string, number | null> = {};
+    state.players.forEach((p) => (nextMap[p.id] = p.team ?? 1));
+    const changed: string[] = [];
+    for (const p of state.players) {
+      const prevTeam = prev[p.id] ?? null;
+      const curTeam = nextMap[p.id];
+      if (prevTeam !== null && prevTeam !== curTeam) changed.push(p.id);
+    }
+    if (changed.length > 0) {
+      setChangedPlayers(changed);
+      const t = setTimeout(() => setChangedPlayers([]), 1400);
+      return () => clearTimeout(t);
+    }
+    prevTeamsRef.current = nextMap;
+  }, [state.players]);
 
   
 
   if (!isHost) {
     if (settings.mode === 'teams') {
+      const currentPlayer = players.find((p) => p.id === currentPlayerId);
       return (
         <div className="mx-auto flex max-w-md flex-col items-center gap-6 px-4 py-16 text-center">
           <div className="h-16 w-16 rounded-full bg-gradient-to-r from-accent to-neon" />
@@ -101,6 +123,12 @@ export default function Lobby({ state, isHost, currentPlayerId, onUpdate, onRena
               Choisir mon équipe
             </button>
           </div>
+
+          {currentPlayer?.team && (
+            <div className="mt-3">
+              <span className="team-badge">Tu es dans l'équipe {teamLabels[(currentPlayer.team ?? 1) - 1]}</span>
+            </div>
+          )}
 
           <p className="mt-4 text-sm text-white/60">Ou attends l'hôte pour lancer la partie.</p>
 
@@ -391,11 +419,14 @@ export default function Lobby({ state, isHost, currentPlayerId, onUpdate, onRena
                     <span className="text-xs text-white/50">{teamPlayers.length} joueur(s)</span>
                   </div>
                   <ul className="space-y-2">
-                    {teamPlayers.length === 0 ? (
-                      <li className="text-sm text-white/40">Aucune personne dans cette équipe.</li>
-                    ) : (
-                      teamPlayers.map((player) => (
-                        <li key={player.id} className="flex items-center justify-between gap-3 rounded-lg bg-black/10 px-2 py-1.5">
+                      {teamPlayers.length === 0 ? (
+                        <li className="text-sm text-white/40">Aucune personne dans cette équipe.</li>
+                      ) : (
+                        teamPlayers.map((player) => (
+                          <li
+                            key={player.id}
+                            className={`flex items-center justify-between gap-3 rounded-lg bg-black/10 px-2 py-1.5 ${changedPlayers.includes(player.id) ? 'team-flash' : ''}`}
+                          >
                             <div className="flex items-center gap-3">
                               <span className="truncate">{player.name}</span>
                               {!player.isHost && (
@@ -404,9 +435,9 @@ export default function Lobby({ state, isHost, currentPlayerId, onUpdate, onRena
                                 </button>
                               )}
                             </div>
-                        </li>
-                      ))
-                    )}
+                          </li>
+                        ))
+                      )}
                   </ul>
                 </div>
               ))}
