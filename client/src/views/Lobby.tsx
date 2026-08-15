@@ -217,31 +217,26 @@ export default function Lobby({ state, isHost, onUpdate, onRenameTeam, onStart, 
             </div>
           </label>
           {mode === 'teams' && (
-            <div className="space-y-3 lg:col-span-2">
-              <span className="text-sm text-white/60">Nombre d'équipes</span>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <label className="block">
-                  <input
-                    type="number"
-                    min={2}
-                    max={8}
-                    value={settings.teamCount || 2}
-                    onChange={(event) => {
-                      const nextCount = Math.min(8, Math.max(2, Number(event.target.value) || 2));
-                      const nextNames = Array.from({ length: nextCount }, (_, index) => settings.teamNames?.[index]?.trim() || `Équipe ${index + 1}`);
-                      onUpdate({ teamCount: nextCount, teamNames: nextNames });
-                    }}
-                    className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white outline-none focus:border-neon"
-                  />
-                </label>
-                <div className="flex flex-col justify-end">
-                  <span className="text-xs text-white/40">Les noms sont modifiables ci-dessous.</span>
-                </div>
-              </div>
+            <div className="space-y-3 lg:col-span-1">
+              <label className="block h-full">
+                <span className="text-sm text-white/60">Nombre d'équipes</span>
+                <input
+                  type="number"
+                  min={2}
+                  max={8}
+                  value={settings.teamCount || 2}
+                  onChange={(event) => {
+                    const nextCount = Math.min(8, Math.max(2, Number(event.target.value) || 2));
+                    const nextNames = Array.from({ length: nextCount }, (_, index) => settings.teamNames?.[index]?.trim() || `Équipe ${index + 1}`);
+                    onUpdate({ teamCount: nextCount, teamNames: nextNames });
+                  }}
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white outline-none focus:border-neon"
+                />
+              </label>
             </div>
           )}
           {(mode === 'solo' || mode === 'teams') && (
-            <label className="block">
+            <label className="block lg:col-span-1">
               <span className="text-sm text-white/60">{mode === 'solo' ? 'Nom de l’équipe' : 'Pseudo de l’hôte'}</span>
               <input
                 type="text"
