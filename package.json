@@ -13,7 +13,8 @@
     "start": "npm run start -w server",
     "test:smoke": "node scripts/smoke.mjs",
     "lint": "npm run lint -w client && npm run lint -w server",
-    "typecheck": "npm run typecheck -w client && npm run typecheck -w server"
+    "typecheck": "npm run typecheck -w client && npm run typecheck -w server",
+    "test:difficulty": "node scripts/difficulty.mjs"
   },
   "devDependencies": {
     "concurrently": "^9.1.0"
