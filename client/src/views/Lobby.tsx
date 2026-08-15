@@ -52,12 +52,25 @@ export default function Lobby({ state, isHost, onUpdate, onRenameTeam, onStart, 
       const value = settings.teamNames?.[index];
       return value && value.trim().length > 0 ? value : `Équipe ${index + 1}`;
     });
-    setTeamDrafts(nextDrafts);
+    setTeamDrafts((previous) => {
+      if (previous.length === nextDrafts.length && previous.every((value, index) => value === nextDrafts[index])) {
+        return previous;
+      }
+      return nextDrafts;
+    });
   }, [settings.teamCount, settings.teamNames]);
+
+  const syncTeamDrafts = () => {
+    const nextNames = Array.from({ length: Math.max(1, settings.teamCount ?? 2) }, (_, index) => {
+      const value = teamDrafts[index] ?? settings.teamNames?.[index] ?? `Équipe ${index + 1}`;
+      return value && value.trim().length > 0 ? value.trim() : `Équipe ${index + 1}`;
+    });
+    onUpdate({ teamNames: nextNames });
+  };
 
   const teamLabels = Array.from({ length: Math.max(1, settings.teamCount ?? 2) }, (_, index) => {
     const rawName = teamDrafts[index] ?? settings.teamNames?.[index];
-    return rawName && rawName.trim().length > 0 ? rawName : `Équipe ${index + 1}`;
+    return rawName && rawName.trim().length > 0 ? rawName.trim() : `Équipe ${index + 1}`;
   });
 
   const playersByTeam = Array.from({ length: Math.max(1, settings.teamCount ?? 2) }, (_, index) => {
@@ -257,12 +270,8 @@ export default function Lobby({ state, isHost, onUpdate, onRenameTeam, onStart, 
                       const nextDrafts = [...teamDrafts];
                       nextDrafts[index] = event.target.value;
                       setTeamDrafts(nextDrafts);
-                      const nextNames = Array.from({ length: settings.teamCount ?? 2 }, (_, draftIndex) => {
-                        const value = draftIndex === index ? event.target.value : teamDrafts[draftIndex] ?? settings.teamNames?.[draftIndex] ?? '';
-                        return value ?? '';
-                      });
-                      onUpdate({ teamNames: nextNames });
                     }}
+                    onBlur={syncTeamDrafts}
                     className="w-full rounded-lg border border-white/10 bg-black/10 px-3 py-2 text-white outline-none focus:border-neon"
                   />
                 </label>
