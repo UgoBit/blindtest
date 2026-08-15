@@ -17,7 +17,9 @@ export default function TeamAssignmentModal({ open, onClose, state, currentPlaye
   const { settings, players } = state;
   const teamLabels = Array.from({ length: Math.max(1, settings.teamCount ?? 2) }, (_, index) => settings.teamNames?.[index] ?? `Équipe ${index + 1}`);
 
-  // If host manager view, show all players; else show only non-hosts and highlight the current player
+  // Players that can be assigned to teams (exclude host when host is Arbitre)
+  const assignablePlayers = players.filter((p) => !(p.isHost && settings.hostPlays === false));
+  // If host manager view, operate on assignablePlayers; for player chooser, only non-hosts
   const shownPlayers = isHost ? players : players.filter((p) => !p.isHost);
   const current = currentPlayerId ? players.find((p) => p.id === currentPlayerId) : undefined;
 
@@ -39,7 +41,7 @@ export default function TeamAssignmentModal({ open, onClose, state, currentPlaye
         <div className="mt-4 space-y-3">
           {teamLabels.map((label, index) => {
             const teamNumber = index + 1;
-            const count = players.filter((p) => (p.team ?? 1) === teamNumber).length;
+            const count = assignablePlayers.filter((p) => (p.team ?? 1) === teamNumber).length;
             const selected = current ? (current.team ?? 1) === teamNumber : false;
             return (
               <div key={`modal-team-${index}`}>
@@ -53,7 +55,7 @@ export default function TeamAssignmentModal({ open, onClose, state, currentPlaye
                       <div className="text-xs text-white/60">{count} joueur{count > 1 ? 's' : ''}</div>
                     </div>
                     <div className="mt-3 space-y-2">
-                      {players
+                      {assignablePlayers
                         .filter((p) => (p.team ?? 1) === teamNumber)
                         .map((p) => (
                           <div key={p.id} className="flex items-center justify-between gap-3 text-sm">
@@ -101,7 +103,11 @@ export default function TeamAssignmentModal({ open, onClose, state, currentPlaye
             {shownPlayers.map((p) => (
               <li key={p.id} className="flex items-center justify-between">
                 <span>{p.name}{p.isHost ? ' (Hôte)' : ''}</span>
-                <span className="text-xs">{teamLabels[(p.team ?? 1) - 1] ?? `Équipe ${(p.team ?? 1)}`}</span>
+                <span className="text-xs">
+                  {p.isHost && settings.hostPlays === false
+                    ? 'Arbitre'
+                    : teamLabels[(p.team ?? 1) - 1] ?? `Équipe ${(p.team ?? 1)}`}
+                </span>
               </li>
             ))}
             {shownPlayers.length === 0 && <li className="text-white/50">Aucun autre joueur connecté.</li>}
