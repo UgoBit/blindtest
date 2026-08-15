@@ -42,4 +42,13 @@ npm start       # sert le client et l'API sur :3001
 ```
 
 Pour jouer avec des téléphones sur le même réseau, ouvrez le site via l'IP locale de
-l'hôte (par ex. `http://192.168.1.20:3001`) ou déployez-le (Render, Fly.io, Railway…).
+l'hôte (par ex. `http://192.168.1.20:3001`).
+
+## Mise en ligne
+
+`render.yaml` décrit le service : sur [Render](https://render.com), **New → Blueprint**, choisir ce
+dépôt, puis **Apply**. Le site est ensuite accessible en HTTPS depuis n'importe quel téléphone, et le
+QR code utilise automatiquement cette adresse.
+
+Le plan gratuit met le service en veille après 15 minutes sans visite : la première page peut prendre
+une minute à s'ouvrir. Les parties sont gardées en mémoire, donc un redémarrage les efface.
