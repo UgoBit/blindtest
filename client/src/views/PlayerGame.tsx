@@ -89,14 +89,10 @@ export default function PlayerGame({ state, playerId, onBuzz }: Props) {
           </div>
         ) : null}
 
-        <span className="absolute inset-0 bg-black/20" />
+        {/* Keeps the answer readable on top of a bright cover. */}
+        {state.phase === 'reveal' && <span className="absolute inset-0 bg-black/55" />}
         <span className="relative z-10 flex h-full flex-col items-center justify-center gap-3 px-8 text-center">
-          {state.phase === 'countdown' && (
-            <>
-              <span className="text-4xl">Prêt…</span>
-              <span className="text-xs font-medium uppercase tracking-[0.3em] text-white/50">Pas encore</span>
-            </>
-          )}
+          {state.phase === 'countdown' && 'Prêt…'}
           {state.phase === 'listening' && (me?.lockedOut ? 'Éliminé' : 'BUZZ')}
           {state.phase === 'buzzed' && (
             <>
