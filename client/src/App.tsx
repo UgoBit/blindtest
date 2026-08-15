@@ -28,6 +28,19 @@ export default function App() {
   const [autoplayBlocked, setAutoplayBlocked] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
+  const playAudio = useCallback(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    void audio
+      .play()
+      .then(() => setAutoplayBlocked(false))
+      .catch((reason: unknown) => {
+        // A browser refusing to autoplay is not a broken preview: ask for a click instead.
+        if (isAutoplayBlocked(reason)) setAutoplayBlocked(true);
+        else socket.emit('preview_failed');
+      });
+  }, []);
+
   useEffect(() => {
     const onState = (next: RoomState) => setState(next);
     const onTrack = (next: HostTrack) => setTrack(next);
@@ -35,18 +48,7 @@ export default function App() {
     const onAudio = ({ action }: { action: 'play' | 'pause' | 'stop' }) => {
       const audio = audioRef.current;
       if (!audio) return;
-      if (action === 'play') {
-        void audio
-          .play()
-          .then(() => setAutoplayBlocked(false))
-          .catch((reason: unknown) => {
-            if (isAutoplayBlocked(reason)) {
-              setAutoplayBlocked(true);
-              return;
-            }
-            socket.emit('preview_failed');
-          });
-      }
+      if (action === 'play') playAudio();
       else audio.pause();
     };
 
@@ -60,7 +62,7 @@ export default function App() {
       socket.off('error_message', onError);
       socket.off('audio', onAudio);
     };
-  }, []);
+  }, [playAudio]);
 
   // Reconnects a returning device (refresh, phone locked) to its previous seat.
   useEffect(() => {
@@ -96,21 +98,6 @@ export default function App() {
     if (audio.readyState >= HTMLMediaElement.HAVE_METADATA) seek();
     return () => audio.removeEventListener('loadedmetadata', seek);
   }, [track]);
-
-  const resumeAudio = useCallback(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    void audio
-      .play()
-      .then(() => setAutoplayBlocked(false))
-      .catch((reason: unknown) => {
-        if (isAutoplayBlocked(reason)) {
-          setAutoplayBlocked(true);
-          return;
-        }
-        socket.emit('preview_failed');
-      });
-  }, []);
 
   const createRoom = useCallback(() => {
     const settings: RoomSettings = {
@@ -164,7 +151,7 @@ export default function App() {
 
       {isHost && autoplayBlocked && (
         <div className="mx-auto mt-4 max-w-lg px-4">
-          <button className="btn-primary w-full" onClick={resumeAudio}>
+          <button className="btn-primary w-full" onClick={playAudio}>
             Reprendre le son
           </button>
         </div>
