@@ -1,0 +1,11 @@
+# Deploiement en un clic : Render > New > Blueprint, puis choisir ce depot.
+services:
+  - type: web
+    name: blindtest
+    runtime: node
+    plan: free
+    buildCommand: npm install --include=dev && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
