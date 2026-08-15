@@ -145,17 +145,32 @@ export default function Lobby({ state, isHost, onUpdate, onRenameTeam, onStart, 
               className="mt-2 w-full accent-neon"
             />
           </label>
-          <label className="flex items-center gap-3 self-end">
-            <input
-              type="checkbox"
-              checked={settings.hostPlays}
-              onChange={(event) => onUpdate({ hostPlays: event.target.checked })}
-              className="h-5 w-5 accent-neon"
-            />
-            <span className="text-sm">
-              <span className="block">Buzzer sur cet écran</span>
-              <span className="block text-xs text-white/50">Un buzzer et un score partagés autour de l'écran</span>
-            </span>
+          <label className="block lg:col-span-2">
+            <span className="text-sm text-white/60">Format</span>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => onUpdate({ hostPlays: false })}
+                className={`rounded-xl border px-3 py-2 text-sm transition ${
+                  !settings.hostPlays
+                    ? 'border-neon bg-neon/20 text-white'
+                    : 'border-white/10 bg-white/5 text-white/70 hover:bg-white/10'
+                }`}
+              >
+                Solo
+              </button>
+              <button
+                type="button"
+                onClick={() => onUpdate({ hostPlays: true })}
+                className={`rounded-xl border px-3 py-2 text-sm transition ${
+                  settings.hostPlays
+                    ? 'border-neon bg-neon/20 text-white'
+                    : 'border-white/10 bg-white/5 text-white/70 hover:bg-white/10'
+                }`}
+              >
+                Par équipe
+              </button>
+            </div>
           </label>
           {settings.hostPlays && (
             <label className="block">
