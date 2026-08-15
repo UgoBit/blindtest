@@ -131,6 +131,12 @@ io.on('connection', (socket) => {
     current.renameHost(playerId, sanitizePlayerName(name, 'Sur place'));
   });
 
+  socket.on('assign_team', ({ playerId: target, team }) => {
+    const current = room();
+    if (!current || !isHost() || current.phase !== 'lobby' || !target) return;
+    current.assignTeam(target, team);
+  });
+
   socket.on('start_game', () => {
     if (!isHost()) return;
     void room()?.start();

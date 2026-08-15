@@ -8,6 +8,7 @@ interface Props {
   isHost: boolean;
   onUpdate: (settings: Partial<RoomState['settings']>) => void;
   onRenameTeam: (name: string) => void;
+  onAssignTeam: (playerId: string, team: number | null) => void;
   onStart: () => void;
   onKick: (playerId: string) => void;
 }
@@ -18,7 +19,7 @@ const CATEGORY_LABELS: Record<Theme['category'], string> = {
   culture: 'Culture',
 };
 
-export default function Lobby({ state, isHost, onUpdate, onRenameTeam, onStart, onKick }: Props) {
+export default function Lobby({ state, isHost, onUpdate, onRenameTeam, onAssignTeam, onStart, onKick }: Props) {
   const [themes, setThemes] = useState<Theme[]>([]);
   const [teamName, setTeamName] = useState('Sur place');
   const [teamDrafts, setTeamDrafts] = useState<string[]>([]);
@@ -235,7 +236,38 @@ export default function Lobby({ state, isHost, onUpdate, onRenameTeam, onStart, 
               </label>
             </div>
           )}
-          {(mode === 'solo' || mode === 'teams') && (
+          {mode === 'teams' && (
+            <div className="space-y-3 lg:col-span-1">
+              <label className="block h-full">
+                <span className="text-sm text-white/60">Rôle de l’hôte</span>
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => onUpdate({ hostPlays: false })}
+                    className={`rounded-xl border px-3 py-2 text-sm transition ${
+                      !settings.hostPlays
+                        ? 'border-neon bg-neon/20 text-white'
+                        : 'border-white/10 bg-white/5 text-white/70 hover:bg-white/10'
+                    }`}
+                  >
+                    Arbitre
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onUpdate({ hostPlays: true })}
+                    className={`rounded-xl border px-3 py-2 text-sm transition ${
+                      settings.hostPlays
+                        ? 'border-neon bg-neon/20 text-white'
+                        : 'border-white/10 bg-white/5 text-white/70 hover:bg-white/10'
+                    }`}
+                  >
+                    Joue
+                  </button>
+                </div>
+              </label>
+            </div>
+          )}
+          {(mode === 'solo' || (mode === 'teams' && settings.hostPlays)) && (
             <label className="block lg:col-span-1">
               <span className="text-sm text-white/60">{mode === 'solo' ? 'Nom de l’équipe' : 'Pseudo de l’hôte'}</span>
               <input
@@ -291,7 +323,29 @@ export default function Lobby({ state, isHost, onUpdate, onRenameTeam, onStart, 
         <div className="card">
           <h3 className="mb-3 font-bold">Joueurs connectés</h3>
           {mode === 'teams' ? (
-            <div className="space-y-3">
+            <div className="space-y-4">
+              {settings.hostPlays && host && (
+                <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <p className="text-xs uppercase tracking-widest text-white/40">Hôte</p>
+                    <span className="rounded bg-neon/20 px-2 py-0.5 text-[10px] uppercase tracking-widest text-neon">Joue</span>
+                  </div>
+                  <label className="block">
+                    <span className="mb-1 block text-xs text-white/60">Équipe</span>
+                    <select
+                      value={String(host.team ?? 1)}
+                      onChange={(event) => onAssignTeam(host.id, Number(event.target.value))}
+                      className="w-full rounded-lg border border-white/10 bg-black/10 px-3 py-2 text-white outline-none focus:border-neon"
+                    >
+                      {teamLabels.map((label, index) => (
+                        <option key={`host-team-${index}`} value={index + 1}>
+                          {label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+              )}
               {playersByTeam.map((teamPlayers, index) => (
                 <div key={`team-${index + 1}`} className="rounded-xl border border-white/10 bg-white/5 p-3">
                   <p className="mb-2 text-xs uppercase tracking-widest text-white/40">
@@ -302,8 +356,19 @@ export default function Lobby({ state, isHost, onUpdate, onRenameTeam, onStart, 
                       <li className="text-sm text-white/40">Aucun joueur dans cette équipe.</li>
                     ) : (
                       teamPlayers.map((player) => (
-                        <li key={player.id} className="flex items-center justify-between rounded-lg bg-black/10 px-2 py-1.5">
-                          <span>{player.name}</span>
+                        <li key={player.id} className="flex items-center justify-between gap-3 rounded-lg bg-black/10 px-2 py-1.5">
+                          <span className="truncate">{player.name}</span>
+                          <select
+                            value={String(player.team ?? 1)}
+                            onChange={(event) => onAssignTeam(player.id, Number(event.target.value))}
+                            className="rounded border border-white/10 bg-black/10 px-2 py-1 text-xs text-white outline-none focus:border-neon"
+                          >
+                            {teamLabels.map((label, teamIndex) => (
+                              <option key={`${player.id}-team-${teamIndex}`} value={teamIndex + 1}>
+                                {label}
+                              </option>
+                            ))}
+                          </select>
                           {!player.isHost && (
                             <button className="text-xs text-white/40 hover:text-red-300" onClick={() => onKick(player.id)}>
                               retirer

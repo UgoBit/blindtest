@@ -90,6 +90,7 @@ export interface ClientToServerEvents {
   ) => void;
   update_settings: (settings: Partial<RoomSettings>) => void;
   rename_team: (name: string) => void;
+  assign_team: (payload: { playerId: string; team: number | null }) => void;
   start_game: () => void;
   buzz: () => void;
   judge: (payload: { title: boolean; artist: boolean }) => void;

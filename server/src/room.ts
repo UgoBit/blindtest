@@ -125,11 +125,25 @@ export class Room {
     this.broadcast();
   }
 
+  assignTeam(playerId: string, team: number | null): void {
+    const member = this.players.get(playerId);
+    if (!member) return;
+    if (team === null) {
+      member.team = null;
+      this.touch();
+      this.broadcast();
+      return;
+    }
+    member.team = Math.min(this.settings.teamCount, Math.max(1, Number(team) || 1));
+    this.touch();
+    this.broadcast();
+  }
+
   canBuzz(playerId: string): boolean {
     const member = this.players.get(playerId);
     if (!member || member.lockedOut) return false;
     if (this.settings.mode === 'solo') return member.isHost;
-    if (this.settings.mode === 'teams') return true;
+    if (this.settings.mode === 'teams') return member.isHost ? this.settings.hostPlays : true;
     return !member.isHost;
   }
 

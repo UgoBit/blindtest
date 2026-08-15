@@ -185,7 +185,7 @@ export default function App() {
     return <Home initialCode={codeFromUrl()} error={error} onCreate={createRoom} onJoin={joinRoom} />;
   }
 
-  const hostPlaying = isHost && (state.settings.mode === 'solo' || state.settings.mode === 'teams' || state.settings.hostPlays);
+  const hostPlaying = isHost && (state.settings.mode === 'solo' || (state.settings.mode === 'teams' && state.settings.hostPlays));
   const hostMember = state.players.find((player) => player.id === playerId);
   const hostCanBuzz = hostPlaying && state.phase === 'listening' && !hostMember?.lockedOut;
 
@@ -241,6 +241,7 @@ export default function App() {
           isHost={isHost}
           onUpdate={(settings) => socket.emit('update_settings', settings)}
           onRenameTeam={(name) => socket.emit('rename_team', name)}
+          onAssignTeam={(playerId, team) => socket.emit('assign_team', { playerId, team })}
           onStart={() => socket.emit('start_game')}
           onKick={(target) => socket.emit('kick', target)}
         />
