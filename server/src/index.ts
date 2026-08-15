@@ -55,6 +55,11 @@ function sanitizeSettings(input: Partial<RoomSettings>): RoomSettings {
     ? (input.difficulty as Difficulty)
     : 'mixte';
   const mode = input.mode === 'solo' ? 'solo' : input.mode === 'teams' ? 'teams' : 'phones';
+  const teamCount = Math.min(8, Math.max(2, Math.round(input.teamCount ?? 2)));
+  const sanitizedNames = Array.from({ length: teamCount }, (_, index) => {
+    const provided = input.teamNames?.[index]?.trim();
+    return provided && provided.length > 0 ? provided.slice(0, 20) : `Équipe ${index + 1}`;
+  });
   const hostPlays = mode === 'solo' || input.hostPlays === true;
   return {
     themes: themes.length > 0 ? themes.slice(0, 8) : ['top'],
@@ -62,7 +67,8 @@ function sanitizeSettings(input: Partial<RoomSettings>): RoomSettings {
     rounds: Math.min(30, Math.max(1, Math.round(input.rounds ?? 10))),
     clipSeconds: Math.min(30, Math.max(5, Math.round(input.clipSeconds ?? 30))),
     mode,
-    teamCount: Math.min(8, Math.max(2, Math.round(input.teamCount ?? 2))),
+    teamCount,
+    teamNames: sanitizedNames,
     hostPlays,
   };
 }

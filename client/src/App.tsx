@@ -154,6 +154,7 @@ export default function App() {
       hostPlays: false,
       mode: 'phones',
       teamCount: 2,
+      teamNames: ['Équipe 1', 'Équipe 2'],
     };
     socket.emit('create_room', settings, (res) => {
       if (!res.ok) {

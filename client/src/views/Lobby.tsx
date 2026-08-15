@@ -46,6 +46,11 @@ export default function Lobby({ state, isHost, onUpdate, onRenameTeam, onStart, 
     if (host?.name) setTeamName(host.name);
   }, [host?.name]);
 
+  const teamLabels = Array.from({ length: Math.max(1, settings.teamCount ?? 2) }, (_, index) => {
+    const rawName = settings.teamNames?.[index];
+    return rawName && rawName.trim().length > 0 ? rawName : `Équipe ${index + 1}`;
+  });
+
   const playersByTeam = Array.from({ length: Math.max(1, settings.teamCount ?? 2) }, (_, index) => {
     const teamNumber = index + 1;
     return players.filter((player) => (player.team ?? 1) === teamNumber);
@@ -190,17 +195,28 @@ export default function Lobby({ state, isHost, onUpdate, onRenameTeam, onStart, 
             </div>
           </label>
           {mode === 'teams' && (
-            <label className="block">
+            <div className="space-y-3 lg:col-span-2">
               <span className="text-sm text-white/60">Nombre d'équipes</span>
-              <input
-                type="number"
-                min={2}
-                max={8}
-                value={settings.teamCount || 2}
-                onChange={(event) => onUpdate({ teamCount: Math.min(8, Math.max(2, Number(event.target.value) || 2)) })}
-                className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white outline-none focus:border-neon"
-              />
-            </label>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="block">
+                  <input
+                    type="number"
+                    min={2}
+                    max={8}
+                    value={settings.teamCount || 2}
+                    onChange={(event) => {
+                      const nextCount = Math.min(8, Math.max(2, Number(event.target.value) || 2));
+                      const nextNames = Array.from({ length: nextCount }, (_, index) => settings.teamNames?.[index]?.trim() || `Équipe ${index + 1}`);
+                      onUpdate({ teamCount: nextCount, teamNames: nextNames });
+                    }}
+                    className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white outline-none focus:border-neon"
+                  />
+                </label>
+                <div className="flex flex-col justify-end">
+                  <span className="text-xs text-white/40">Les noms sont modifiables ci-dessous.</span>
+                </div>
+              </div>
+            </div>
           )}
           {mode === 'solo' && (
             <label className="block">
@@ -216,6 +232,30 @@ export default function Lobby({ state, isHost, onUpdate, onRenameTeam, onStart, 
             </label>
           )}
         </section>
+
+        {mode === 'teams' && (
+          <section className="card">
+            <h2 className="mb-3 text-xl font-bold">Noms des équipes</h2>
+            <div className="grid gap-3 md:grid-cols-2">
+              {teamLabels.map((teamNameLabel, index) => (
+                <label key={`team-edit-${index}`} className="block rounded-xl border border-white/10 bg-white/5 p-3">
+                  <span className="mb-2 block text-xs uppercase tracking-widest text-white/40">{teamNameLabel}</span>
+                  <input
+                    type="text"
+                    maxLength={20}
+                    value={teamNameLabel}
+                    onChange={(event) => {
+                      const nextNames = [...(settings.teamNames ?? [])];
+                      nextNames[index] = event.target.value || `Équipe ${index + 1}`;
+                      onUpdate({ teamNames: nextNames });
+                    }}
+                    className="w-full rounded-lg border border-white/10 bg-black/10 px-3 py-2 text-white outline-none focus:border-neon"
+                  />
+                </label>
+              ))}
+            </div>
+          </section>
+        )}
 
         <button className="btn-primary w-full text-lg" disabled={!canStart} onClick={onStart}>
           {canStart
@@ -236,7 +276,9 @@ export default function Lobby({ state, isHost, onUpdate, onRenameTeam, onStart, 
             <div className="space-y-3">
               {playersByTeam.map((teamPlayers, index) => (
                 <div key={`team-${index + 1}`} className="rounded-xl border border-white/10 bg-white/5 p-3">
-                  <p className="mb-2 text-xs uppercase tracking-widest text-white/40">Équipe {index + 1}</p>
+                  <p className="mb-2 text-xs uppercase tracking-widest text-white/40">
+                    {teamLabels[index] ?? `Équipe ${index + 1}`}
+                  </p>
                   <ul className="space-y-2">
                     {teamPlayers.length === 0 ? (
                       <li className="text-sm text-white/40">Aucun joueur dans cette équipe.</li>

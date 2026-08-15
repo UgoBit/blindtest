@@ -53,6 +53,7 @@ export interface RoomSettings {
   hostPlays: boolean;
   mode: GameMode;
   teamCount: number;
+  teamNames: string[];
 }
 
 export interface RoomState {
