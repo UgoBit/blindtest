@@ -140,6 +140,10 @@ io.on('connection', (socket) => {
     if (isHost()) void room()?.retryPreview();
   });
 
+  socket.on('resync', () => {
+    if (playerId) room()?.resyncPlayer(playerId, socket.id);
+  });
+
   socket.on('kick', (target) => {
     if (isHost()) room()?.kick(target);
   });

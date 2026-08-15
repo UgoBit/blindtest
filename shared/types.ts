@@ -88,6 +88,7 @@ export interface ClientToServerEvents {
   next_round: () => void;
   restart: () => void;
   preview_failed: () => void;
+  resync: () => void;
   kick: (playerId: string) => void;
 }
 

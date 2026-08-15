@@ -86,6 +86,17 @@ export class Room {
     this.broadcast();
   }
 
+  resyncPlayer(playerId: string, socketId: string): boolean {
+    const member = this.players.get(playerId);
+    if (!member) return false;
+    member.socketId = socketId;
+    member.connected = true;
+    this.touch();
+    this.broadcast();
+    if (member.isHost) this.resyncHost();
+    return true;
+  }
+
   kick(playerId: string): void {
     if (playerId === this.hostId) return;
     this.players.delete(playerId);
@@ -156,7 +167,7 @@ export class Room {
 
   /** Restores audio on a host device that reconnected in the middle of a round. */
   resyncHost(): void {
-    if (this.phase !== 'listening' && this.phase !== 'buzzed') return;
+    if (!['countdown', 'listening', 'buzzed', 'reveal'].includes(this.phase)) return;
     this.sendHostTrack();
     const socketId = this.hostSocketId;
     if (this.phase === 'listening' && socketId) {

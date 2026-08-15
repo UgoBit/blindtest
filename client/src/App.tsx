@@ -66,9 +66,9 @@ export default function App() {
 
   // Reconnects a returning device (refresh, phone locked) to its previous seat.
   useEffect(() => {
-    const stored = loadSession();
-    if (!stored) return;
-    const rejoin = () =>
+    const rejoin = () => {
+      const stored = loadSession();
+      if (!stored) return;
       socket.emit('join_room', { code: stored.code, name: stored.name, playerId: stored.playerId }, (res) => {
         if (!res.ok) {
           clearSession();
@@ -77,6 +77,7 @@ export default function App() {
         setPlayerId(res.playerId);
         setIsHost(stored.isHost);
       });
+    };
     if (socket.connected) rejoin();
     socket.on('connect', rejoin);
     return () => {
@@ -98,6 +99,21 @@ export default function App() {
     if (audio.readyState >= HTMLMediaElement.HAVE_METADATA) seek();
     return () => audio.removeEventListener('loadedmetadata', seek);
   }, [track]);
+
+  const lastResyncRound = useRef<number | null>(null);
+  useEffect(() => {
+    if (
+      !state ||
+      !isHost ||
+      !['countdown', 'listening', 'buzzed', 'reveal'].includes(state.phase) ||
+      (state.track && track?.index === state.track.index) ||
+      lastResyncRound.current === state.round
+    ) {
+      return;
+    }
+    lastResyncRound.current = state.round;
+    socket.emit('resync');
+  }, [isHost, state, track]);
 
   const createRoom = useCallback(() => {
     const settings: RoomSettings = {
@@ -137,6 +153,8 @@ export default function App() {
   }
 
   const hostPlaying = isHost && state.settings.hostPlays;
+  const hostMember = state.players.find((player) => player.id === playerId);
+  const hostCanBuzz = hostPlaying && state.phase === 'listening' && !hostMember?.lockedOut;
 
   return (
     <>
@@ -180,11 +198,11 @@ export default function App() {
             {hostPlaying && (
               <div className="mx-auto max-w-6xl px-4 pb-10">
                 <button
-                  className="btn-primary w-full text-2xl"
-                  disabled={state.phase !== 'listening'}
+                  className={hostCanBuzz ? 'btn-primary w-full text-2xl' : 'btn w-full bg-white/10 text-2xl text-white/40'}
+                  disabled={!hostCanBuzz}
                   onClick={() => socket.emit('buzz')}
                 >
-                  BUZZ
+                  {hostMember?.lockedOut ? 'Éliminé' : 'BUZZ'}
                 </button>
               </div>
             )}
