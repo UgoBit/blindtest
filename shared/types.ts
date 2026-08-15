@@ -81,6 +81,7 @@ export interface ClientToServerEvents {
     ack: (res: { ok: true; playerId: string } | { ok: false; error: string }) => void,
   ) => void;
   update_settings: (settings: Partial<RoomSettings>) => void;
+  rename_team: (name: string) => void;
   start_game: () => void;
   buzz: () => void;
   judge: (payload: { title: boolean; artist: boolean }) => void;

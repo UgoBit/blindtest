@@ -16,7 +16,7 @@ export default function Scores({ players, highlight }: { players: Player[]; high
           <span className="flex items-center gap-3">
             <span className="w-5 text-white/40">{index + 1}</span>
             <span className={player.connected ? '' : 'text-white/40 line-through'}>{player.name}</span>
-            {player.isHost && <span className="rounded bg-white/10 px-2 py-0.5 text-xs">hôte</span>}
+            {player.isHost && <span className="rounded bg-white/10 px-2 py-0.5 text-xs">équipe</span>}
           </span>
           <span className="font-bold text-accent">{player.score}</span>
         </li>

@@ -63,6 +63,10 @@ function sanitizeSettings(input: Partial<RoomSettings>): RoomSettings {
   };
 }
 
+function sanitizePlayerName(name: string, fallback: string): string {
+  return name.trim().slice(0, 16) || fallback;
+}
+
 io.on('connection', (socket) => {
   let roomCode: string | null = null;
   let playerId: string | null = null;
@@ -77,7 +81,7 @@ io.on('connection', (socket) => {
     const created = new Room(io, sanitizeSettings(settings));
     playerId = randomUUID();
     roomCode = created.code;
-    created.addPlayer(playerId, 'Hôte', socket.id, true);
+    created.addPlayer(playerId, 'Sur place', socket.id, true);
     socket.join(created.code);
     ack({ ok: true, code: created.code, playerId });
     created.broadcast();
@@ -89,7 +93,7 @@ io.on('connection', (socket) => {
       ack({ ok: false, error: 'Aucune partie avec ce code' });
       return;
     }
-    const cleanName = name.trim().slice(0, 16) || 'Joueur';
+    const cleanName = sanitizePlayerName(name, 'Joueur');
     const rejoining = knownId ? target.players.get(knownId) : undefined;
     if (!rejoining && target.phase !== 'lobby') {
       ack({ ok: false, error: 'La partie a déjà commencé' });
@@ -109,6 +113,12 @@ io.on('connection', (socket) => {
     if (!current || !isHost() || current.phase !== 'lobby') return;
     current.settings = sanitizeSettings({ ...current.settings, ...settings });
     current.broadcast();
+  });
+
+  socket.on('rename_team', (name) => {
+    const current = room();
+    if (!current || !isHost() || current.phase !== 'lobby' || !playerId) return;
+    current.renameHost(playerId, sanitizePlayerName(name, 'Sur place'));
   });
 
   socket.on('start_game', () => {

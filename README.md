@@ -13,7 +13,7 @@ reçoivent jamais ni l'URL audio ni la réponse.
 ## Fonctionnalités
 
 - Salon avec code à 4 lettres + QR code de connexion
-- L'hôte est arbitre, ou joueur lui aussi (case « Je joue aussi »)
+- Buzzer partagé sur l'écran hôte, avec un nom et un score d'équipe uniques
 - Thèmes cumulables : genres, époques (80/90/2000), films, Disney, dessins animés, jeux vidéo, pubs
 - Niveaux facile / moyen / difficile / mixte : chaque thème est trié par popularité Deezer
   puis découpé en trois paliers (les charts sont complétés par les radios du genre pour que

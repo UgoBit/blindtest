@@ -28,6 +28,32 @@ export default function App() {
   const [autoplayBlocked, setAutoplayBlocked] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.code !== 'Space' || event.repeat) return;
+      const target = event.target;
+      const isTextField =
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target instanceof HTMLSelectElement ||
+        (target instanceof HTMLElement && target.isContentEditable);
+      if (isTextField) return;
+      event.preventDefault();
+
+      const hostPlayer = state?.players.find((player) => player.id === playerId);
+      const canBuzz =
+        isHost &&
+        state !== null &&
+        state.settings.hostPlays &&
+        state.phase === 'listening' &&
+        !hostPlayer?.lockedOut;
+      if (canBuzz) socket.emit('buzz');
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [isHost, playerId, state]);
+
   const playAudio = useCallback(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -130,7 +156,7 @@ export default function App() {
       }
       setPlayerId(res.playerId);
       setIsHost(true);
-      saveSession({ code: res.code, playerId: res.playerId, name: 'Hôte', isHost: true });
+      saveSession({ code: res.code, playerId: res.playerId, name: 'Sur place', isHost: true });
       window.history.replaceState(null, '', `/host/${res.code}`);
     });
   }, []);
@@ -180,6 +206,7 @@ export default function App() {
           state={state}
           isHost={isHost}
           onUpdate={(settings) => socket.emit('update_settings', settings)}
+          onRenameTeam={(name) => socket.emit('rename_team', name)}
           onStart={() => socket.emit('start_game')}
           onKick={(target) => socket.emit('kick', target)}
         />
@@ -198,11 +225,16 @@ export default function App() {
             {hostPlaying && (
               <div className="mx-auto max-w-6xl px-4 pb-10">
                 <button
-                  className={hostCanBuzz ? 'btn-primary w-full text-2xl' : 'btn w-full bg-white/10 text-2xl text-white/40'}
+                  className={
+                    hostCanBuzz
+                      ? 'btn-primary flex w-full flex-col items-center gap-1 py-7 text-5xl'
+                      : 'btn flex w-full flex-col items-center gap-1 bg-white/10 py-7 text-5xl text-white/40'
+                  }
                   disabled={!hostCanBuzz}
                   onClick={() => socket.emit('buzz')}
                 >
-                  {hostMember?.lockedOut ? 'Éliminé' : 'BUZZ'}
+                  <span>{hostMember?.lockedOut ? 'Éliminé' : 'BUZZ'}</span>
+                  {!hostMember?.lockedOut && <span className="text-sm font-medium tracking-normal text-white/70">Espace</span>}
                 </button>
               </div>
             )}
