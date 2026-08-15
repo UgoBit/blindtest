@@ -57,22 +57,26 @@ export default function TeamAssignmentModal({ open, onClose, state, currentPlaye
                     <div className="mt-3 space-y-2">
                       {assignablePlayers
                         .filter((p) => (p.team ?? 1) === teamNumber)
-                        .map((p) => (
-                          <div key={p.id} className="flex items-center justify-between gap-3 text-sm">
-                            <span>{p.name}{p.isHost ? ' (Hôte)' : ''}</span>
-                            <div className="flex items-center gap-2">
-                              <select
-                                value={String(p.team ?? 1)}
-                                onChange={(e) => onAssignTeam(p.id, Number(e.target.value))}
-                                className="rounded border border-white/10 bg-black/10 px-2 py-1 text-xs text-white outline-none"
-                              >
-                                {teamLabels.map((t, ti) => (
-                                  <option key={`${p.id}-opt-${ti}`} value={ti + 1}>{t}</option>
-                                ))}
-                              </select>
+                        .map((p) => {
+                          // extra safety: never render the host inside team lists when they're arbitre
+                          if (p.isHost && settings.hostPlays === false) return null;
+                          return (
+                            <div key={p.id} className="flex items-center justify-between gap-3 text-sm">
+                              <span>{p.name}{p.isHost ? ' (Hôte)' : ''}</span>
+                              <div className="flex items-center gap-2">
+                                <select
+                                  value={String(p.team ?? 1)}
+                                  onChange={(e) => onAssignTeam(p.id, Number(e.target.value))}
+                                  className="rounded border border-white/10 bg-black/10 px-2 py-1 text-xs text-white outline-none"
+                                >
+                                  {teamLabels.map((t, ti) => (
+                                    <option key={`${p.id}-opt-${ti}`} value={ti + 1}>{t}</option>
+                                  ))}
+                                </select>
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                     </div>
                   </div>
                 ) : (
