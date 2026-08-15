@@ -65,9 +65,21 @@ export class Room {
 
   addPlayer(playerId: string, name: string, socketId: string, isHost = false): Member {
     const existing = this.players.get(playerId);
+    const nextTeamIndex = this.settings.mode === 'teams' && !isHost
+      ? (([...this.players.values()].filter((player) => !player.isHost).length % Math.max(1, this.settings.teamCount)) + 1)
+      : null;
     const member: Member = existing
-      ? { ...existing, name, socketId, connected: true }
-      : { id: playerId, name, score: 0, connected: true, isHost, lockedOut: false, socketId };
+      ? { ...existing, name, socketId, connected: true, team: existing.team ?? (nextTeamIndex ?? existing.team ?? null) }
+      : {
+          id: playerId,
+          name,
+          score: 0,
+          connected: true,
+          isHost,
+          lockedOut: false,
+          socketId,
+          team: nextTeamIndex,
+        };
     this.players.set(playerId, member);
     if (isHost) this.hostId = playerId;
     this.touch();
@@ -116,7 +128,8 @@ export class Room {
   canBuzz(playerId: string): boolean {
     const member = this.players.get(playerId);
     if (!member || member.lockedOut) return false;
-    return member.isHost ? this.settings.hostPlays : true;
+    if (this.settings.mode === 'solo') return member.isHost;
+    return !member.isHost;
   }
 
   state(): RoomState {
@@ -127,7 +140,10 @@ export class Room {
       settings: this.settings,
       players: [...this.players.values()]
         .map(({ socketId: _socketId, ...player }) => player)
-        .filter((player) => !player.isHost || this.settings.hostPlays || this.phase === 'lobby'),
+        .filter(
+          (player) =>
+            !player.isHost || this.settings.mode === 'solo' || this.settings.hostPlays || this.phase === 'lobby',
+        ),
       buzzedBy: this.buzzedBy,
       answer:
         this.phase === 'reveal' && track

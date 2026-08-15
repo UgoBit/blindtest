@@ -7,6 +7,8 @@ export interface Theme {
   category: 'genre' | 'epoque' | 'culture';
 }
 
+export type GameMode = 'phones' | 'solo' | 'teams';
+
 export interface Player {
   id: string;
   name: string;
@@ -14,6 +16,7 @@ export interface Player {
   connected: boolean;
   isHost: boolean;
   lockedOut: boolean;
+  team?: number | null;
 }
 
 /** Track info as seen by everyone, including players: never contains the answer. */
@@ -48,6 +51,8 @@ export interface RoomSettings {
   rounds: number;
   clipSeconds: number;
   hostPlays: boolean;
+  mode: GameMode;
+  teamCount: number;
 }
 
 export interface RoomState {

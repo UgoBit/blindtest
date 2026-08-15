@@ -42,7 +42,8 @@ export default function App() {
       if (isTextField) return;
 
       const hostPlayer = state?.players.find((player) => player.id === playerId);
-      if (!isHost || !state?.settings.hostPlays) return;
+      const hostMode = state?.settings.mode === 'solo' || state?.settings.hostPlays;
+      if (!isHost || !hostMode) return;
       event.preventDefault();
       if (state.phase === 'listening' && !hostPlayer?.lockedOut) socket.emit('buzz');
     };
@@ -151,6 +152,8 @@ export default function App() {
       rounds: 10,
       clipSeconds: 30,
       hostPlays: false,
+      mode: 'phones',
+      teamCount: 2,
     };
     socket.emit('create_room', settings, (res) => {
       if (!res.ok) {
@@ -181,7 +184,7 @@ export default function App() {
     return <Home initialCode={codeFromUrl()} error={error} onCreate={createRoom} onJoin={joinRoom} />;
   }
 
-  const hostPlaying = isHost && state.settings.hostPlays;
+  const hostPlaying = isHost && (state.settings.mode === 'solo' || state.settings.hostPlays);
   const hostMember = state.players.find((player) => player.id === playerId);
   const hostCanBuzz = hostPlaying && state.phase === 'listening' && !hostMember?.lockedOut;
 

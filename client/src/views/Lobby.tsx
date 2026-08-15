@@ -39,11 +39,17 @@ export default function Lobby({ state, isHost, onUpdate, onRenameTeam, onStart, 
 
   const guests = players.filter((player) => !player.isHost);
   const host = players.find((player) => player.isHost);
-  const canStart = guests.length > 0 || settings.hostPlays;
+  const mode = settings.mode ?? 'phones';
+  const canStart = mode === 'solo' ? true : guests.length > 0;
 
   useEffect(() => {
     if (host?.name) setTeamName(host.name);
   }, [host?.name]);
+
+  const playersByTeam = Array.from({ length: Math.max(1, settings.teamCount ?? 2) }, (_, index) => {
+    const teamNumber = index + 1;
+    return players.filter((player) => (player.team ?? 1) === teamNumber);
+  });
 
   if (!isHost) {
     return (
@@ -147,12 +153,23 @@ export default function Lobby({ state, isHost, onUpdate, onRenameTeam, onStart, 
           </label>
           <label className="block lg:col-span-2">
             <span className="text-sm text-white/60">Format</span>
-            <div className="mt-2 grid grid-cols-2 gap-2">
+            <div className="mt-2 grid grid-cols-3 gap-2">
               <button
                 type="button"
-                onClick={() => onUpdate({ hostPlays: false })}
+                onClick={() => onUpdate({ mode: 'phones', hostPlays: false })}
                 className={`rounded-xl border px-3 py-2 text-sm transition ${
-                  !settings.hostPlays
+                  mode === 'phones'
+                    ? 'border-neon bg-neon/20 text-white'
+                    : 'border-white/10 bg-white/5 text-white/70 hover:bg-white/10'
+                }`}
+              >
+                Téléphones
+              </button>
+              <button
+                type="button"
+                onClick={() => onUpdate({ mode: 'solo', hostPlays: true })}
+                className={`rounded-xl border px-3 py-2 text-sm transition ${
+                  mode === 'solo'
                     ? 'border-neon bg-neon/20 text-white'
                     : 'border-white/10 bg-white/5 text-white/70 hover:bg-white/10'
                 }`}
@@ -161,18 +178,31 @@ export default function Lobby({ state, isHost, onUpdate, onRenameTeam, onStart, 
               </button>
               <button
                 type="button"
-                onClick={() => onUpdate({ hostPlays: true })}
+                onClick={() => onUpdate({ mode: 'teams', hostPlays: false, teamCount: settings.teamCount || 2 })}
                 className={`rounded-xl border px-3 py-2 text-sm transition ${
-                  settings.hostPlays
+                  mode === 'teams'
                     ? 'border-neon bg-neon/20 text-white'
                     : 'border-white/10 bg-white/5 text-white/70 hover:bg-white/10'
                 }`}
               >
-                Par équipe
+                Équipes
               </button>
             </div>
           </label>
-          {settings.hostPlays && (
+          {mode === 'teams' && (
+            <label className="block">
+              <span className="text-sm text-white/60">Nombre d'équipes</span>
+              <input
+                type="number"
+                min={2}
+                max={8}
+                value={settings.teamCount || 2}
+                onChange={(event) => onUpdate({ teamCount: Math.min(8, Math.max(2, Number(event.target.value) || 2)) })}
+                className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white outline-none focus:border-neon"
+              />
+            </label>
+          )}
+          {mode === 'solo' && (
             <label className="block">
               <span className="text-sm text-white/60">Nom de l'équipe</span>
               <input
@@ -189,8 +219,8 @@ export default function Lobby({ state, isHost, onUpdate, onRenameTeam, onStart, 
 
         <button className="btn-primary w-full text-lg" disabled={!canStart} onClick={onStart}>
           {canStart
-            ? `Lancer la partie (${guests.length + (settings.hostPlays ? 1 : 0)} ${
-                guests.length + (settings.hostPlays ? 1 : 0) > 1 ? 'buzzers' : 'buzzer'
+            ? `Lancer la partie (${mode === 'solo' ? '1 joueur' : guests.length + (mode === 'teams' ? 0 : 0)} ${
+                mode === 'solo' ? '' : guests.length > 1 ? 'buzzers' : 'buzzer'
               })`
             : 'En attente de joueurs…'}
         </button>
@@ -202,17 +232,43 @@ export default function Lobby({ state, isHost, onUpdate, onRenameTeam, onStart, 
         </div>
         <div className="card">
           <h3 className="mb-3 font-bold">Joueurs connectés</h3>
-          <ul className="space-y-2">
-            {guests.map((player) => (
-              <li key={player.id} className="flex items-center justify-between rounded-lg bg-white/5 px-3 py-2">
-                <span>{player.name}</span>
-                <button className="text-xs text-white/40 hover:text-red-300" onClick={() => onKick(player.id)}>
-                  retirer
-                </button>
-              </li>
-            ))}
-            {guests.length === 0 && <li className="text-sm text-white/40">Scannez le QR code pour rejoindre.</li>}
-          </ul>
+          {mode === 'teams' ? (
+            <div className="space-y-3">
+              {playersByTeam.map((teamPlayers, index) => (
+                <div key={`team-${index + 1}`} className="rounded-xl border border-white/10 bg-white/5 p-3">
+                  <p className="mb-2 text-xs uppercase tracking-widest text-white/40">Équipe {index + 1}</p>
+                  <ul className="space-y-2">
+                    {teamPlayers.length === 0 ? (
+                      <li className="text-sm text-white/40">Aucun joueur dans cette équipe.</li>
+                    ) : (
+                      teamPlayers.map((player) => (
+                        <li key={player.id} className="flex items-center justify-between rounded-lg bg-black/10 px-2 py-1.5">
+                          <span>{player.name}</span>
+                          {!player.isHost && (
+                            <button className="text-xs text-white/40 hover:text-red-300" onClick={() => onKick(player.id)}>
+                              retirer
+                            </button>
+                          )}
+                        </li>
+                      ))
+                    )}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <ul className="space-y-2">
+              {guests.map((player) => (
+                <li key={player.id} className="flex items-center justify-between rounded-lg bg-white/5 px-3 py-2">
+                  <span>{player.name}</span>
+                  <button className="text-xs text-white/40 hover:text-red-300" onClick={() => onKick(player.id)}>
+                    retirer
+                  </button>
+                </li>
+              ))}
+              {guests.length === 0 && <li className="text-sm text-white/40">Scannez le QR code pour rejoindre.</li>}
+            </ul>
+          )}
         </div>
       </aside>
     </div>
