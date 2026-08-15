@@ -377,20 +377,9 @@ export default function Lobby({ state, isHost, currentPlayerId, onUpdate, onRena
                     <p className="text-xs uppercase tracking-widest text-white/40">Hôte</p>
                     <span className="rounded bg-neon/20 px-2 py-0.5 text-[10px] uppercase tracking-widest text-neon">Joue</span>
                   </div>
-                  <label className="block">
-                    <span className="mb-1 block text-xs text-white/60">Équipe</span>
-                    <select
-                      value={String(host.team ?? 1)}
-                      onChange={(event) => onAssignTeam(host.id, Number(event.target.value))}
-                      className="w-full rounded-lg border border-white/10 bg-black/10 px-3 py-2 text-white outline-none focus:border-neon"
-                    >
-                      {teamLabels.map((label, index) => (
-                        <option key={`host-team-${index}`} value={index + 1}>
-                          {label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                  <div>
+                    <span className="text-sm font-semibold">{host.name} <span className="ml-2 text-xs text-white/50">{teamLabels[(host.team ?? 1) - 1]}</span></span>
+                  </div>
                 </div>
               )}
               {playersByTeam.map((teamPlayers, index) => (
@@ -407,23 +396,14 @@ export default function Lobby({ state, isHost, currentPlayerId, onUpdate, onRena
                     ) : (
                       teamPlayers.map((player) => (
                         <li key={player.id} className="flex items-center justify-between gap-3 rounded-lg bg-black/10 px-2 py-1.5">
-                          <span className="truncate">{player.name}</span>
-                          <select
-                            value={String(player.team ?? 1)}
-                            onChange={(event) => onAssignTeam(player.id, Number(event.target.value))}
-                            className="rounded border border-white/10 bg-black/10 px-2 py-1 text-xs text-white outline-none focus:border-neon"
-                          >
-                            {teamLabels.map((label, teamIndex) => (
-                              <option key={`${player.id}-team-${teamIndex}`} value={teamIndex + 1}>
-                                {label}
-                              </option>
-                            ))}
-                          </select>
-                          {!player.isHost && (
-                            <button className="text-xs text-white/40 hover:text-red-300" onClick={() => onKick(player.id)}>
-                              retirer
-                            </button>
-                          )}
+                            <div className="flex items-center gap-3">
+                              <span className="truncate">{player.name}</span>
+                              {!player.isHost && (
+                                <button className="text-xs text-white/40 hover:text-red-300" onClick={() => onKick(player.id)}>
+                                  retirer
+                                </button>
+                              )}
+                            </div>
                         </li>
                       ))
                     )}
