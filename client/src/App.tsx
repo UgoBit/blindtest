@@ -38,16 +38,11 @@ export default function App() {
         target instanceof HTMLSelectElement ||
         (target instanceof HTMLElement && target.isContentEditable);
       if (isTextField) return;
-      event.preventDefault();
 
       const hostPlayer = state?.players.find((player) => player.id === playerId);
-      const canBuzz =
-        isHost &&
-        state !== null &&
-        state.settings.hostPlays &&
-        state.phase === 'listening' &&
-        !hostPlayer?.lockedOut;
-      if (canBuzz) socket.emit('buzz');
+      if (!isHost || !state?.settings.hostPlays) return;
+      event.preventDefault();
+      if (state.phase === 'listening' && !hostPlayer?.lockedOut) socket.emit('buzz');
     };
 
     window.addEventListener('keydown', onKeyDown);

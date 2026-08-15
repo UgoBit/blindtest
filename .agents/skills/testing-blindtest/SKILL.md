@@ -27,6 +27,7 @@ Use `wmctrl -r <title> -e 0,x,y,w,h` to tile the host and player windows so one 
   `Lancer la partie (N joueurs)`, `retirer` (kick).
 - Screen buzzer: activate `Buzzer sur cet écran`, choose the team name, then use the large host button or the `Espace` shortcut during `listening`.
 - The screen buzzer is shared by everyone present and uses one team score; verify the chosen name in host and player scores.
+- A screen-only game is valid: with no phones connected, activate the screen buzzer and launch the game; without it, the launch button stays disabled.
 - Player: `/join/CODE` prefills the code; enter pseudo → `Rejoindre` → big `BUZZ` (states `Prêt…`, `BUZZ`, `Éliminé`,
   `X buzze`, `Réponse`).
 - Host game: `Préparez-vous…` → `Ça joue ! Qui buzze ?` → `X a buzzé !` with `Titre + artiste (+2)`, `Titre seul (+1)`,

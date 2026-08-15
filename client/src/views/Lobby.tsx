@@ -39,6 +39,7 @@ export default function Lobby({ state, isHost, onUpdate, onRenameTeam, onStart, 
 
   const guests = players.filter((player) => !player.isHost);
   const host = players.find((player) => player.isHost);
+  const canStart = guests.length > 0 || settings.hostPlays;
 
   useEffect(() => {
     if (host?.name) setTeamName(host.name);
@@ -171,8 +172,12 @@ export default function Lobby({ state, isHost, onUpdate, onRenameTeam, onStart, 
           )}
         </section>
 
-        <button className="btn-primary w-full text-lg" disabled={guests.length === 0} onClick={onStart}>
-          {guests.length === 0 ? 'En attente de joueurs…' : `Lancer la partie (${guests.length} joueurs)`}
+        <button className="btn-primary w-full text-lg" disabled={!canStart} onClick={onStart}>
+          {canStart
+            ? `Lancer la partie (${guests.length + (settings.hostPlays ? 1 : 0)} ${
+                guests.length + (settings.hostPlays ? 1 : 0) > 1 ? 'buzzers' : 'buzzer'
+              })`
+            : 'En attente de joueurs…'}
         </button>
       </div>
 
