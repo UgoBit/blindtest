@@ -53,6 +53,7 @@ export default function Lobby({
   const guests = players.filter((player) => !player.isHost);
   const host = players.find((player) => player.isHost);
   const teamLabels = Array.from({ length: teamCount }, (_, index) => teamNameFor(settings.teamNames, index));
+  const teamNamesKey = JSON.stringify(settings.teamNames);
   const assignablePlayers = players.filter((player) => settings.hostPlays || !player.isHost);
   const teams = Array.from({ length: teamCount }, (_, index) => ({
     number: index + 1,
@@ -68,6 +69,11 @@ export default function Lobby({
   useEffect(() => {
     if (host?.name) setTeamName(host.name);
   }, [host?.name]);
+
+  useEffect(() => {
+    const names = JSON.parse(teamNamesKey) as string[];
+    setTeamDrafts(names.map((name, index) => name.trim() || `Équipe ${index + 1}`));
+  }, [teamNamesKey]);
 
   const toggleTheme = (id: string) => {
     const next = settings.themes.includes(id)
@@ -90,7 +96,9 @@ export default function Lobby({
 
   const commitTeamName = (index: number) => {
     const nextNames = teamLabels.map((label, teamIndex) =>
-      teamIndex === index ? teamDrafts[index]?.trim() || `Équipe ${teamIndex + 1}` : label,
+      teamIndex === index
+        ? teamDrafts[index]?.trim() || settings.teamNames[index]?.trim() || `Équipe ${teamIndex + 1}`
+        : label,
     );
     onUpdate({ teamNames: nextNames });
   };

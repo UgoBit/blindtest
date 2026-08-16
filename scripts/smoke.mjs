@@ -68,5 +68,91 @@ console.log('finished, final scores:', finished.players.map((p) => `${p.name}=${
 
 for (const player of players) player.socket.close();
 host.close();
+
+const teamHost = connect();
+await wait(teamHost, 'connect');
+const teamRoom = await new Promise((resolve) =>
+  teamHost.emit(
+    'create_room',
+    {
+      themes: ['top', 'annees80'],
+      difficulty: 'facile',
+      rounds: 3,
+      clipSeconds: 10,
+      hostPlays: false,
+      mode: 'teams',
+      teamCount: 2,
+      teamNames: ['Les Bleus', 'Les Rouges'],
+    },
+    resolve,
+  ),
+);
+const teamPlayers = [];
+for (const name of ['Alice', 'Chloé', 'Bastien']) {
+  const socket = connect();
+  await wait(socket, 'connect');
+  const res = await new Promise((resolve) =>
+    socket.emit('join_room', { code: teamRoom.code, name }, resolve),
+  );
+  if (!res.ok) throw new Error(res.error);
+  teamPlayers.push({ name, socket, id: res.playerId });
+}
+teamHost.emit('assign_team', { playerId: teamPlayers[0].id, team: 1 });
+teamHost.emit('assign_team', { playerId: teamPlayers[1].id, team: 1 });
+teamHost.emit('assign_team', { playerId: teamPlayers[2].id, team: 2 });
+await wait(teamPlayers[0].socket, 'room_state', (state) =>
+  state.phase === 'lobby' &&
+  state.players
+    .filter((player) => !player.isHost)
+    .every((player) => player.team !== null && player.team !== undefined),
+);
+
+const teamTrackPromise = wait(teamHost, 'host_track');
+teamHost.emit('start_game');
+await teamTrackPromise;
+await wait(teamPlayers[0].socket, 'room_state', (state) => state.phase === 'listening');
+const privateState = await new Promise((resolve) => {
+  teamPlayers[0].socket.once('room_state', resolve);
+  teamPlayers[0].socket.emit('resync');
+});
+if (privateState.answer !== null || privateState.track?.cover !== null) {
+  throw new Error('team player answer leaked before reveal');
+}
+
+teamPlayers[0].socket.emit('buzz');
+const wrongBuzz = await wait(teamHost, 'room_state', (state) => state.phase === 'buzzed');
+if (wrongBuzz.buzzedBy !== teamPlayers[0].id) throw new Error('team player A did not win the buzz');
+teamHost.emit('judge', { title: false, artist: false });
+const afterWrong = await wait(teamHost, 'room_state', (state) => state.phase === 'listening');
+const alice = afterWrong.players.find((player) => player.id === teamPlayers[0].id);
+const chloe = afterWrong.players.find((player) => player.id === teamPlayers[1].id);
+const bastien = afterWrong.players.find((player) => player.id === teamPlayers[2].id);
+if (!alice.lockedOut || !chloe.lockedOut) throw new Error('entire team A was not locked out');
+if (bastien.lockedOut) throw new Error('other team was incorrectly locked out');
+console.log('team elimination ok');
+
+teamPlayers[2].socket.emit('buzz');
+const rightBuzz = await wait(teamHost, 'room_state', (state) => state.phase === 'buzzed');
+if (rightBuzz.buzzedBy !== teamPlayers[2].id) throw new Error('team player B could not buzz');
+teamHost.emit('judge', { title: true, artist: true });
+const teamReveal = await wait(teamHost, 'room_state', (state) => state.phase === 'reveal');
+const winningTeam = teamReveal.teamScores.find((team) => team.team === 2);
+const losingTeam = teamReveal.teamScores.find((team) => team.team === 1);
+if (winningTeam?.score !== 2) throw new Error(`expected team B score 2, got ${winningTeam?.score}`);
+if (losingTeam?.score !== 0) throw new Error(`expected team A score 0, got ${losingTeam?.score}`);
+console.log('team scoring ok:', teamReveal.teamScores.map((team) => `${team.name}=${team.score}`).join(' '));
+
+const countdownPromise = wait(teamHost, 'room_state', (state) => state.phase === 'countdown' && state.round === 1);
+teamHost.emit('next_round');
+await countdownPromise;
+const nextTeamRoundPromise = wait(teamHost, 'room_state', (state) => state.phase === 'listening');
+teamHost.emit('skip');
+teamHost.emit('next_round');
+const nextTeamRound = await nextTeamRoundPromise;
+if (nextTeamRound.players.some((player) => player.lockedOut)) throw new Error('team locks were not reset');
+console.log('team round reset ok');
+
+for (const player of teamPlayers) player.socket.close();
+teamHost.close();
 console.log('SMOKE OK');
 process.exit(0);

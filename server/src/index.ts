@@ -122,6 +122,7 @@ io.on('connection', (socket) => {
     const current = room();
     if (!current || !isHost() || current.phase !== 'lobby') return;
     current.settings = sanitizeSettings({ ...current.settings, ...settings });
+    current.resizeTeamScores();
     current.broadcast();
   });
 

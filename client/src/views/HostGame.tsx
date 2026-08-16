@@ -14,6 +14,9 @@ interface Props {
 
 export default function HostGame({ state, track, onJudge, onSkip, onNext, onCancel }: Props) {
   const buzzer = state.players.find((player) => player.id === state.buzzedBy) ?? null;
+  const buzzerTeam = buzzer?.team
+    ? state.teamScores.find((team) => team.team === buzzer.team)
+    : null;
   const answer = state.answer;
   const [confirmOpen, setConfirmOpen] = useState(false);
 
@@ -46,6 +49,9 @@ export default function HostGame({ state, track, onJudge, onSkip, onNext, onCanc
         {state.phase === 'buzzed' && buzzer && (
           <>
             <p className="text-4xl font-black text-neon">{buzzer.name} a buzzé !</p>
+            {state.settings.mode === 'teams' && buzzerTeam && (
+              <p className="text-lg font-semibold text-white/70">Équipe {buzzerTeam.name}</p>
+            )}
             <p className="text-white/60">Réponse attendue : titre et/ou artiste</p>
             <div className="flex flex-wrap justify-center gap-3">
               <button className="btn-primary" onClick={() => onJudge(true, true)}>
@@ -94,7 +100,12 @@ export default function HostGame({ state, track, onJudge, onSkip, onNext, onCanc
 
       <aside className="card">
         <h3 className="mb-3 font-bold">Scores</h3>
-        <Scores players={state.players} highlight={state.buzzedBy} />
+        <Scores
+          players={state.players}
+          teams={state.teamScores}
+          mode={state.settings.mode}
+          highlight={state.buzzedBy}
+        />
         <div className="mt-4">
           <>
             <button className="btn bg-red-600 w-full" onClick={() => setConfirmOpen(true)}>

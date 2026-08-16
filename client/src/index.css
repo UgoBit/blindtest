@@ -32,19 +32,6 @@ body {
     @apply shadow-[0_12px_30px_rgba(15,14,24,0.3)] transition-transform duration-200 active:scale-[0.99];
   }
 
-  .team-badge {
-    @apply inline-block rounded-full bg-white/5 px-3 py-1 text-sm font-medium text-white;
-  }
-
-  .team-flash {
-    animation: team-flash 1.4s cubic-bezier(.2,.9,.2,1);
-  }
-
-  @keyframes team-flash {
-    0% { box-shadow: 0 0 0 0 rgba(124,92,255,0.45); transform: translateY(0); }
-    30% { box-shadow: 0 6px 28px -6px rgba(124,92,255,0.25); transform: translateY(-4px); }
-    100% { box-shadow: none; transform: translateY(0); }
-  }
 }
 
 @keyframes buzzer-ring {

@@ -10,10 +10,15 @@ export default function Finished({
   isHost: boolean;
   onRestart: () => void;
 }) {
-  const best = Math.max(0, ...state.players.map((p) => p.score));
-  const leaders = state.players.filter((p) => p.score === best);
+  const teamMode = state.settings.mode === 'teams';
+  const best = Math.max(0, ...(teamMode ? state.teamScores.map((team) => team.score) : state.players.map((p) => p.score)));
+  const leaders = teamMode
+    ? state.teamScores.filter((team) => team.score === best)
+    : state.players.filter((p) => p.score === best);
   const winner = best > 0 && leaders.length === 1 ? leaders[0] : null;
-  const names = leaders.map((p) => p.name);
+  const names = leaders.map((leader) => leader.name);
+  const winningPlayer = winner && 'id' in winner ? winner : null;
+  const winningTeam = winner && 'team' in winner ? winner : null;
 
   return (
     <div className="mx-auto flex max-w-lg flex-col gap-6 px-4 py-12 text-center">
@@ -31,7 +36,13 @@ export default function Finished({
         </p>
       )}
       <div className="card text-left">
-        <Scores players={state.players} highlight={winner?.id} />
+        <Scores
+          players={state.players}
+          teams={state.teamScores}
+          mode={state.settings.mode}
+          highlight={winningPlayer?.id}
+          highlightTeam={winningTeam?.team}
+        />
       </div>
       {isHost && (
         <button className="btn-primary" onClick={onRestart}>

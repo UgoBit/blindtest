@@ -67,6 +67,13 @@ export interface RoomState {
   answer: { title: string; artist: string; cover: string | null } | null;
   track: PublicTrack | null;
   round: number;
+  teamScores: TeamScore[];
+}
+
+export interface TeamScore {
+  team: number;
+  name: string;
+  score: number;
 }
 
 export interface ServerToClientEvents {

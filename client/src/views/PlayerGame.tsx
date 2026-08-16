@@ -11,6 +11,9 @@ interface Props {
 export default function PlayerGame({ state, playerId, onBuzz }: Props) {
   const me = state.players.find((player) => player.id === playerId);
   const buzzer = state.players.find((player) => player.id === state.buzzedBy) ?? null;
+  const buzzerTeam = buzzer?.team
+    ? state.teamScores.find((team) => team.team === buzzer.team)
+    : null;
   const iBuzzed = state.buzzedBy === playerId;
   const canBuzz = state.phase === 'listening' && !me?.lockedOut;
   const [flash, setFlash] = useState(false);
@@ -108,6 +111,11 @@ export default function PlayerGame({ state, playerId, onBuzz }: Props) {
                   <span className="text-base font-semibold normal-case tracking-normal text-white/70">
                     {buzzer?.score ?? 0} pts
                   </span>
+                  {state.settings.mode === 'teams' && buzzerTeam && (
+                    <span className="text-sm font-semibold normal-case tracking-normal text-white/65">
+                      Équipe {buzzerTeam.name}
+                    </span>
+                  )}
                 </>
               )}
             </>
@@ -128,7 +136,12 @@ export default function PlayerGame({ state, playerId, onBuzz }: Props) {
 
       <section className="card">
         <h3 className="mb-3 font-bold">Scores</h3>
-        <Scores players={state.players} highlight={playerId} />
+        <Scores
+          players={state.players}
+          teams={state.teamScores}
+          mode={state.settings.mode}
+          highlight={playerId}
+        />
       </section>
     </div>
   );

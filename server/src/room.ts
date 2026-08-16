@@ -41,6 +41,7 @@ export class Room {
   playlist: Track[] = [];
   round = -1;
   buzzedBy: string | null = null;
+  teamScores: number[];
   lastActivity = Date.now();
 
   private io: Io;
@@ -52,6 +53,7 @@ export class Room {
   constructor(io: Io, settings: RoomSettings) {
     this.io = io;
     this.settings = settings;
+    this.teamScores = Array.from({ length: settings.teamCount }, () => 0);
     rooms.set(this.code, this);
   }
 
@@ -139,6 +141,11 @@ export class Room {
     this.broadcast();
   }
 
+  resizeTeamScores(): void {
+    this.teamScores = Array.from({ length: this.settings.teamCount }, (_, index) => this.teamScores[index] ?? 0);
+    this.broadcast();
+  }
+
   canBuzz(playerId: string): boolean {
     const member = this.players.get(playerId);
     if (!member || member.lockedOut) return false;
@@ -170,6 +177,9 @@ export class Room {
           : null,
       track: track ? { index: this.round + 1, total: this.playlist.length, cover: null } : null,
       round: this.round,
+      teamScores: this.settings.mode === 'teams'
+        ? this.teamScores.map((score, index) => ({ team: index + 1, name: this.settings.teamNames[index] ?? `Équipe ${index + 1}`, score }))
+        : [],
     };
   }
 
@@ -231,6 +241,7 @@ export class Room {
       return;
     }
     for (const member of this.players.values()) member.score = 0;
+    this.teamScores = Array.from({ length: this.settings.teamCount }, () => 0);
     this.round = -1;
     this.nextRound();
   }
@@ -286,10 +297,12 @@ export class Room {
 
     if (title && !this.awarded.title) {
       member.score += POINTS.title;
+      if (this.settings.mode === 'teams' && member.team) this.teamScores[member.team - 1] += POINTS.title;
       this.awarded.title = true;
     }
     if (artist && !this.awarded.artist) {
       member.score += POINTS.artist;
+      if (this.settings.mode === 'teams' && member.team) this.teamScores[member.team - 1] += POINTS.artist;
       this.awarded.artist = true;
     }
 
@@ -299,7 +312,13 @@ export class Room {
     }
 
     // Partial or wrong answer: the player is out for this track, the clip resumes.
-    member.lockedOut = true;
+    if (this.settings.mode === 'teams' && member.team) {
+      for (const teammate of this.players.values()) {
+        if (teammate.team === member.team) teammate.lockedOut = true;
+      }
+    } else {
+      member.lockedOut = true;
+    }
     this.buzzedBy = null;
     const stillPlaying = [...this.players.values()].some((p) => this.canBuzz(p.id));
     if (!stillPlaying) {
@@ -331,6 +350,7 @@ export class Room {
       member.score = 0;
       member.lockedOut = false;
     }
+    this.teamScores = Array.from({ length: this.settings.teamCount }, () => 0);
     this.broadcast();
   }
 
