@@ -6,9 +6,10 @@ interface Props {
   state: RoomState;
   playerId: string;
   onBuzz: () => void;
+  onSubmitAnswer: (answer: { title: string; artist: string }) => void;
 }
 
-export default function PlayerGame({ state, playerId, onBuzz }: Props) {
+export default function PlayerGame({ state, playerId, onBuzz, onSubmitAnswer }: Props) {
   const me = state.players.find((player) => player.id === playerId);
   const buzzer = state.players.find((player) => player.id === state.buzzedBy) ?? null;
   const buzzerTeam = buzzer?.team
@@ -25,6 +26,27 @@ export default function PlayerGame({ state, playerId, onBuzz }: Props) {
   const previousPhase = useRef(state.phase);
   const previousScore = useRef(displayedScore);
   const [revealDelta, setRevealDelta] = useState(0);
+  const [answerTitle, setAnswerTitle] = useState('');
+  const [answerArtist, setAnswerArtist] = useState('');
+  const [remainingResponseSeconds, setRemainingResponseSeconds] = useState(0);
+
+  useEffect(() => {
+    if (!iBuzzed || state.phase !== 'buzzed' || !state.responseDeadline) {
+      setRemainingResponseSeconds(0);
+      return;
+    }
+    const update = () => setRemainingResponseSeconds(Math.max(0, Math.ceil((state.responseDeadline! - Date.now()) / 1000)));
+    update();
+    const timer = window.setInterval(update, 250);
+    return () => window.clearInterval(timer);
+  }, [iBuzzed, state.phase, state.responseDeadline]);
+
+  useEffect(() => {
+    if (state.phase !== 'buzzed') {
+      setAnswerTitle('');
+      setAnswerArtist('');
+    }
+  }, [state.phase]);
 
   useEffect(() => {
     if (!iBuzzed) return;
@@ -137,6 +159,45 @@ export default function PlayerGame({ state, playerId, onBuzz }: Props) {
           )}
         </span>
       </button>
+
+      {state.phase === 'buzzed' && iBuzzed && (
+        <form
+          className="card space-y-3"
+          onSubmit={(event) => {
+            event.preventDefault();
+            onSubmitAnswer({ title: answerTitle, artist: answerArtist });
+          }}
+        >
+          <div>
+            <h2 className="text-lg font-bold">Ta réponse</h2>
+            <p className="mt-1 text-sm text-white/60">
+              Un seul champ suffit · {remainingResponseSeconds}s restantes
+            </p>
+          </div>
+          <label className="block text-left">
+            <span className="text-sm text-white/60">Titre</span>
+            <input
+              autoFocus
+              value={answerTitle}
+              onChange={(event) => setAnswerTitle(event.target.value)}
+              className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-white outline-none focus:border-neon"
+              maxLength={120}
+            />
+          </label>
+          <label className="block text-left">
+            <span className="text-sm text-white/60">Artiste</span>
+            <input
+              value={answerArtist}
+              onChange={(event) => setAnswerArtist(event.target.value)}
+              className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-white outline-none focus:border-neon"
+              maxLength={120}
+            />
+          </label>
+          <button type="submit" className="btn-primary w-full">
+            Valider ma réponse
+          </button>
+        </form>
+      )}
 
       <section className="card">
         <h3 className="mb-3 font-bold">Scores</h3>

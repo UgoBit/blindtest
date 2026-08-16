@@ -77,6 +77,12 @@ export interface RoomState {
   track: PublicTrack | null;
   round: number;
   teamScores: TeamScore[];
+  /** Answer typed by the buzzer, revealed only with the answer. */
+  submittedAnswer: { title: string; artist: string } | null;
+  /** Accepted fields for the submitted answer, revealed only with the answer. */
+  answerVerdict: { title: boolean; artist: boolean } | null;
+  /** Deadline for the buzzer's answer, while the room is in `buzzed`. */
+  responseDeadline: number | null;
 }
 
 export interface TeamScore {
@@ -110,7 +116,8 @@ export interface ClientToServerEvents {
   assign_team: (payload: { playerId: string; team: number | null }) => void;
   start_game: () => void;
   buzz: () => void;
-  judge: (payload: { title: boolean; artist: boolean }) => void;
+  submit_answer: (payload: { title: string; artist: string }) => void;
+  correct_answer: (field: 'title' | 'artist') => void;
   skip: () => void;
   next_round: () => void;
   restart: () => void;

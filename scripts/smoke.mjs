@@ -45,7 +45,7 @@ const buzzed = await wait(host, 'room_state', (state) => state.phase === 'buzzed
 if (buzzed.buzzedBy !== players[0].id) throw new Error('wrong buzzer won the race');
 console.log('buzz locked by', players[0].name);
 
-host.emit('judge', { title: true, artist: true });
+players[0].socket.emit('submit_answer', { title: track.title, artist: track.artist });
 const reveal = await wait(host, 'room_state', (state) => state.phase === 'reveal');
 const scored = reveal.players.find((p) => p.id === players[0].id);
 if (scored.score !== 2) throw new Error(`expected 2 points, got ${scored.score}`);
@@ -68,6 +68,38 @@ console.log('finished, final scores:', finished.players.map((p) => `${p.name}=${
 
 for (const player of players) player.socket.close();
 host.close();
+
+const absenceHost = connect();
+await wait(absenceHost, 'connect');
+const absenceRoom = await new Promise((resolve) =>
+  absenceHost.emit(
+    'create_room',
+    { themes: ['top'], difficulty: 'facile', rounds: 2, clipSeconds: 10, hostPlays: false },
+    resolve,
+  ),
+);
+const absencePlayers = [];
+for (const name of ['Buzzer', 'Autre']) {
+  const socket = connect();
+  await wait(socket, 'connect');
+  const res = await new Promise((resolve) =>
+    socket.emit('join_room', { code: absenceRoom.code, name }, resolve),
+  );
+  if (!res.ok) throw new Error(res.error);
+  absencePlayers.push({ socket, id: res.playerId });
+}
+const absenceTrackPromise = wait(absenceHost, 'host_track');
+absenceHost.emit('start_game');
+await absenceTrackPromise;
+await wait(absencePlayers[0].socket, 'room_state', (state) => state.phase === 'listening');
+absencePlayers[0].socket.emit('buzz');
+await wait(absenceHost, 'room_state', (state) => state.phase === 'buzzed');
+const resumedAfterKick = wait(absenceHost, 'room_state', (state) => state.phase === 'listening');
+absenceHost.emit('kick', absencePlayers[0].id);
+await resumedAfterKick;
+console.log('kicked buzzer resumed listening');
+for (const player of absencePlayers) player.socket.close();
+absenceHost.close();
 
 const teamHost = connect();
 await wait(teamHost, 'connect');
@@ -116,7 +148,7 @@ teamHost.on('audio', () => {
   hostAudioCommand = true;
 });
 teamHost.emit('start_game');
-await teamTrackPromise;
+const teamTrack = await teamTrackPromise;
 const playerTrack = await playerTrackPromise;
 if (!playerTrack.previewUrl.startsWith('http')) throw new Error('player preview url missing');
 if (typeof playerTrack.startAt !== 'number') throw new Error('player startAt missing');
@@ -130,7 +162,12 @@ const privateState = await new Promise((resolve) => {
   teamPlayers[0].socket.once('room_state', resolve);
   teamPlayers[0].socket.emit('resync');
 });
-if (privateState.answer !== null || privateState.track?.cover !== null) {
+if (
+  privateState.answer !== null ||
+  privateState.submittedAnswer !== null ||
+  privateState.answerVerdict !== null ||
+  privateState.track?.cover !== null
+) {
   throw new Error('team player answer leaked before reveal');
 }
 const resyncPlayerTrackPromise = wait(teamPlayers[0].socket, 'player_track');
@@ -148,7 +185,7 @@ console.log('player preview fallback ok');
 teamPlayers[0].socket.emit('buzz');
 const wrongBuzz = await wait(teamHost, 'room_state', (state) => state.phase === 'buzzed');
 if (wrongBuzz.buzzedBy !== teamPlayers[0].id) throw new Error('team player A did not win the buzz');
-teamHost.emit('judge', { title: false, artist: false });
+teamPlayers[0].socket.emit('submit_answer', { title: 'Réponse totalement fausse', artist: 'Artiste inconnu' });
 const afterWrong = await wait(teamHost, 'room_state', (state) => state.phase === 'listening');
 const alice = afterWrong.players.find((player) => player.id === teamPlayers[0].id);
 const chloe = afterWrong.players.find((player) => player.id === teamPlayers[1].id);
@@ -160,13 +197,22 @@ console.log('team elimination ok');
 teamPlayers[2].socket.emit('buzz');
 const rightBuzz = await wait(teamHost, 'room_state', (state) => state.phase === 'buzzed');
 if (rightBuzz.buzzedBy !== teamPlayers[2].id) throw new Error('team player B could not buzz');
-teamHost.emit('judge', { title: true, artist: true });
+teamPlayers[2].socket.emit('submit_answer', { title: teamTrack.title, artist: 'Artiste inconnu' });
 const teamReveal = await wait(teamHost, 'room_state', (state) => state.phase === 'reveal');
 const winningTeam = teamReveal.teamScores.find((team) => team.team === 2);
 const losingTeam = teamReveal.teamScores.find((team) => team.team === 1);
-if (winningTeam?.score !== 2) throw new Error(`expected team B score 2, got ${winningTeam?.score}`);
+if (winningTeam?.score !== 1) throw new Error(`expected team B score 1, got ${winningTeam?.score}`);
 if (losingTeam?.score !== 0) throw new Error(`expected team A score 0, got ${losingTeam?.score}`);
 console.log('team scoring ok:', teamReveal.teamScores.map((team) => `${team.name}=${team.score}`).join(' '));
+const correctionPromise = wait(teamHost, 'room_state', (state) =>
+  state.phase === 'reveal' && state.answerVerdict?.artist === true,
+);
+teamHost.emit('correct_answer', 'artist');
+const correctedTeamReveal = await correctionPromise;
+if (correctedTeamReveal.teamScores.find((team) => team.team === 2)?.score !== 2) {
+  throw new Error('host correction did not credit the missing artist point');
+}
+console.log('host correction ok');
 
 const countdownPromise = wait(teamHost, 'room_state', (state) => state.phase === 'countdown' && state.round === 1);
 teamHost.emit('next_round');

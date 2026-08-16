@@ -152,8 +152,12 @@ io.on('connection', (socket) => {
     if (playerId) room()?.buzz(playerId);
   });
 
-  socket.on('judge', ({ title, artist }) => {
-    if (isHost()) room()?.judge(title, artist);
+  socket.on('submit_answer', ({ title, artist }) => {
+    if (playerId) room()?.submitAnswer(playerId, { title, artist });
+  });
+
+  socket.on('correct_answer', (field) => {
+    if (isHost()) room()?.correctAnswer(field);
   });
 
   socket.on('skip', () => {

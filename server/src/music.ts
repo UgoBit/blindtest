@@ -53,14 +53,66 @@ function toTrack(t: DeezerTrack): Track | null {
   };
 }
 
-function normalize(value: string): string {
-  return value
+export function normalizeAnswer(value: string): string {
+  const withoutDecorations = value
+    .replace(/\(.*?\)|\[.*?\]/g, '')
+    .replace(/\b(?:feat\.?|ft\.?|with|avec)\b.*$/i, '')
+    .replace(/\s[-–—]\s*(?:live|radio edit|remaster(?:ed)?|\d{4}).*$/i, '');
+  return withoutDecorations
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/\(.*?\)|\[.*?\]/g, '')
     .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/^(?:the|le|la|les|l|un|une|a|an)\s+/, '')
+    .replace(/\s+/g, ' ')
     .trim();
+}
+
+function levenshtein(left: string, right: string): number {
+  const previous = Array.from({ length: right.length + 1 }, (_, index) => index);
+  for (let row = 1; row <= left.length; row += 1) {
+    let diagonal = previous[0];
+    previous[0] = row;
+    for (let column = 1; column <= right.length; column += 1) {
+      const above = previous[column];
+      previous[column] = left[row - 1] === right[column - 1]
+        ? diagonal
+        : Math.min(diagonal, previous[column - 1], above) + 1;
+      diagonal = above;
+    }
+  }
+  return previous[right.length];
+}
+
+function singleAnswerMatches(input: string, expected: string): boolean {
+  const left = normalizeAnswer(input);
+  const right = normalizeAnswer(expected);
+  if (!left || !right || Math.min(left.length, right.length) < 3) return false;
+  if (left === right) return true;
+  if ((left.includes(right) || right.includes(left)) && Math.min(left.length, right.length) >= 4) return true;
+  const similarity = 1 - levenshtein(left, right) / Math.max(left.length, right.length);
+  return similarity >= 0.8;
+}
+
+/**
+ * Artist answers may name one significant word (at least four characters);
+ * this keeps "beatles" valid for "The Beatles" without accepting fragments
+ * such as "da".
+ */
+export function answerMatches(input: string, expected: string, kind: 'title' | 'artist'): boolean {
+  if (kind === 'artist') {
+    const candidates = expected.split(/\s*(?:,|&|\bet\b|\band\b|\bx\b)\s*/i);
+    return candidates.some((candidate) => {
+      if (singleAnswerMatches(input, candidate)) return true;
+      const normalizedInput = normalizeAnswer(input);
+      return normalizeAnswer(candidate)
+        .split(' ')
+        .filter((word) => word.length >= 4)
+        .some((word) => singleAnswerMatches(normalizedInput, word));
+    });
+  }
+  return singleAnswerMatches(input, expected);
 }
 
 async function loadPool(theme: ThemeDefinition): Promise<Track[]> {
@@ -104,7 +156,9 @@ async function loadPool(theme: ThemeDefinition): Promise<Track[]> {
     }
   }
 
-  const unique = new Map(tracks.map((track) => [`${normalize(track.title)}|${normalize(track.artist)}`, track]));
+  const unique = new Map(
+    tracks.map((track) => [`${normalizeAnswer(track.title)}|${normalizeAnswer(track.artist)}`, track]),
+  );
   const pool = [...unique.values()];
   poolCache.set(theme.id, { at: Date.now(), tracks: pool });
   return pool;
@@ -154,7 +208,7 @@ export async function buildPlaylist(
       const next = pool.pop();
       if (!next) continue;
       exhausted = false;
-      const key = `${normalize(next.title)}|${normalize(next.artist)}`;
+      const key = `${normalizeAnswer(next.title)}|${normalizeAnswer(next.artist)}`;
       if (seen.has(key)) continue;
       seen.add(key);
       picked.push(next);
@@ -171,7 +225,7 @@ export async function itunesPreview(title: string, artist: string): Promise<stri
     `https://itunes.apple.com/search?term=${term}&entity=song&limit=5`,
   );
   const match = (data?.results ?? []).find(
-    (r) => r.previewUrl && normalize(r.trackName ?? '').includes(normalize(title).slice(0, 12)),
+    (r) => r.previewUrl && normalizeAnswer(r.trackName ?? '').includes(normalizeAnswer(title).slice(0, 12)),
   );
   return match?.previewUrl ?? data?.results?.find((r) => r.previewUrl)?.previewUrl ?? null;
 }
