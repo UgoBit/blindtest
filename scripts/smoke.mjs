@@ -120,7 +120,7 @@ await teamTrackPromise;
 const playerTrack = await playerTrackPromise;
 if (!playerTrack.previewUrl.startsWith('http')) throw new Error('player preview url missing');
 if (typeof playerTrack.startAt !== 'number') throw new Error('player startAt missing');
-if ('title' in playerTrack || 'artist' in playerTrack || 'cover' in playerTrack) {
+if ('title' in playerTrack || 'artist' in playerTrack || playerTrack.cover !== null) {
   throw new Error('private fields leaked in player_track');
 }
 await wait(teamPlayers[0].socket, 'room_state', (state) => state.phase === 'listening');

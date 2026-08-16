@@ -246,6 +246,7 @@ export class Room {
     this.io.to(socketId).emit('player_track', {
       index: this.round + 1,
       total: this.playlist.length,
+      cover: null,
       previewUrl: previewUrl ?? track.previewUrl,
       startAt: this.elapsedSeconds(),
     });

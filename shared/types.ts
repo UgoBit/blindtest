@@ -37,9 +37,7 @@ export interface HostTrack extends PublicTrack {
 }
 
 /** Track info sent to players when their devices output the audio. */
-export interface PlayerTrack {
-  index: number;
-  total: number;
+export interface PlayerTrack extends PublicTrack {
   previewUrl: string;
   /** Offset in seconds the player should resume the clip from. */
   startAt: number;
