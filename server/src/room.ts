@@ -150,7 +150,7 @@ export class Room {
   kick(playerId: string): void {
     if (playerId === this.hostId) return;
     this.players.delete(playerId);
-    if (this.buzzedBy === playerId) this.buzzedBy = null;
+    if (this.buzzedBy === playerId) this.resumeAfterMissingBuzzer();
     this.broadcast();
   }
 
@@ -230,6 +230,22 @@ export class Room {
     if (this.responseTimer) clearTimeout(this.responseTimer);
     this.responseTimer = null;
     this.responseDeadline = null;
+  }
+
+  private resumeAfterMissingBuzzer(): void {
+    if (this.phase !== 'buzzed') return;
+    this.clearResponseTimer();
+    this.buzzedBy = null;
+    this.submittedBy = null;
+    const stillPlaying = [...this.players.values()].some((player) => this.canBuzz(player.id));
+    if (!stillPlaying) {
+      this.reveal();
+      return;
+    }
+    this.phase = 'listening';
+    this.startClock();
+    this.broadcast();
+    this.emitAudio('play');
   }
 
   /** Seconds of the clip already elapsed, used to resume a host that reconnected. */
@@ -364,9 +380,17 @@ export class Room {
   }
 
   submitAnswer(playerId: string, answer: { title: string; artist: string }): void {
-    if (this.phase !== 'buzzed' || !this.buzzedBy || this.buzzedBy !== playerId) return;
+    if (this.phase !== 'buzzed') return;
+    if (!this.buzzedBy) {
+      this.resumeAfterMissingBuzzer();
+      return;
+    }
+    if (this.buzzedBy !== playerId) return;
     const member = this.players.get(playerId);
-    if (!member) return;
+    if (!member) {
+      this.resumeAfterMissingBuzzer();
+      return;
+    }
     this.clearResponseTimer();
     this.submittedAnswer = {
       title: answer.title.trim().slice(0, 120),

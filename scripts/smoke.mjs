@@ -69,6 +69,38 @@ console.log('finished, final scores:', finished.players.map((p) => `${p.name}=${
 for (const player of players) player.socket.close();
 host.close();
 
+const absenceHost = connect();
+await wait(absenceHost, 'connect');
+const absenceRoom = await new Promise((resolve) =>
+  absenceHost.emit(
+    'create_room',
+    { themes: ['top'], difficulty: 'facile', rounds: 2, clipSeconds: 10, hostPlays: false },
+    resolve,
+  ),
+);
+const absencePlayers = [];
+for (const name of ['Buzzer', 'Autre']) {
+  const socket = connect();
+  await wait(socket, 'connect');
+  const res = await new Promise((resolve) =>
+    socket.emit('join_room', { code: absenceRoom.code, name }, resolve),
+  );
+  if (!res.ok) throw new Error(res.error);
+  absencePlayers.push({ socket, id: res.playerId });
+}
+const absenceTrackPromise = wait(absenceHost, 'host_track');
+absenceHost.emit('start_game');
+await absenceTrackPromise;
+await wait(absencePlayers[0].socket, 'room_state', (state) => state.phase === 'listening');
+absencePlayers[0].socket.emit('buzz');
+await wait(absenceHost, 'room_state', (state) => state.phase === 'buzzed');
+const resumedAfterKick = wait(absenceHost, 'room_state', (state) => state.phase === 'listening');
+absenceHost.emit('kick', absencePlayers[0].id);
+await resumedAfterKick;
+console.log('kicked buzzer resumed listening');
+for (const player of absencePlayers) player.socket.close();
+absenceHost.close();
+
 const teamHost = connect();
 await wait(teamHost, 'connect');
 const teamRoom = await new Promise((resolve) =>
