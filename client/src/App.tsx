@@ -266,8 +266,9 @@ export default function App() {
           <>
             <HostGame
               state={state}
-              track={track}
-              onJudge={(title, artist) => socket.emit('judge', { title, artist })}
+              onCorrectAnswer={(field) => socket.emit('correct_answer', field)}
+              canSubmitAnswer={state.buzzedBy === playerId}
+              onSubmitAnswer={(answer) => socket.emit('submit_answer', answer)}
               onSkip={() => socket.emit('skip')}
               onNext={() => socket.emit('next_round')}
               onCancel={() => {
@@ -296,7 +297,12 @@ export default function App() {
             )}
           </>
         ) : (
-          <PlayerGame state={state} playerId={playerId} onBuzz={() => socket.emit('buzz')} />
+          <PlayerGame
+            state={state}
+            playerId={playerId}
+            onBuzz={() => socket.emit('buzz')}
+            onSubmitAnswer={(answer) => socket.emit('submit_answer', answer)}
+          />
         ))}
 
       {state.phase === 'finished' && (

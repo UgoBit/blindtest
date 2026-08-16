@@ -14,7 +14,8 @@
     "test:smoke": "node scripts/smoke.mjs",
     "lint": "npm run lint -w client && npm run lint -w server",
     "typecheck": "npm run typecheck -w client && npm run typecheck -w server",
-    "test:difficulty": "node scripts/difficulty.mjs"
+    "test:difficulty": "node scripts/difficulty.mjs",
+    "test:matcher": "node scripts/answer-matcher.mjs"
   },
   "devDependencies": {
     "concurrently": "^9.1.0"

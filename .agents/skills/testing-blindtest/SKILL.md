@@ -31,8 +31,10 @@ Use `wmctrl -r <title> -e 0,x,y,w,h` to tile the host and player windows so one 
 - Audio output may target the host screen, player devices, or both; verify player playback and host muting when each destination is toggled.
 - Player: `/join/CODE` prefills the code; enter pseudo → `Rejoindre` → big `BUZZ` (states `Prêt…`, `BUZZ`, `Éliminé`,
   `X buzze`, `Réponse`).
-- Host game: `Préparez-vous…` → `Ça joue ! Qui buzze ?` → `X a buzzé !` with `Titre + artiste (+2)`, `Titre seul (+1)`,
-  `Artiste seul (+1)`, `Raté`; then `Manche suivante` / `Passer / révéler`; end `Partie terminée` + `Rejouer`.
+- Host game: `Préparez-vous…` → `Ça joue ! Qui buzze ?` → `X a buzzé !`; the buzzer types a title and/or artist
+  on their own device, with a 25-second response limit. Matching is tolerant to accents, punctuation, articles,
+  versions and small typos. The host sees the typed answer only at reveal and can use `En fait c’était bon` once
+  per field; `Passer / révéler` remains available.
 - Errors to assert: `Aucune partie avec ce code`, `La partie a déjà commencé`.
 
 ## Audio verification
@@ -55,6 +57,8 @@ alone is not proof, since it persists in a previously reloaded page).
 - `npm run test:difficulty` → prints `DIFFICULTY OK <facile> > <moyen> > <difficile>` average popularity ranks.
 - A leak probe (join as player, dump `room_state` during `listening`) is a good way to prove player state contains no
   `previewUrl`, no title/artist and `track.cover === null`.
+- During `buzzed`, verify only the buzzer sees the answer fields; before `reveal`, no typed answer or true answer
+  may appear in any player's `room_state`.
 
 ## Devin Secrets Needed
 none

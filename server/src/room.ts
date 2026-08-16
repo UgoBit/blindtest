@@ -8,7 +8,7 @@ import type {
   ServerToClientEvents,
 } from '../../shared/types.js';
 import { POINTS } from '../../shared/types.js';
-import { buildPlaylist, itunesPreview, type Track } from './music.js';
+import { answerMatches, buildPlaylist, itunesPreview, type Track } from './music.js';
 
 type Io = Server<ClientToServerEvents, ServerToClientEvents>;
 
@@ -18,6 +18,7 @@ interface Member extends Player {
 
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const COUNTDOWN_MS = 3000;
+const RESPONSE_TIMEOUT_MS = 25_000;
 
 export const rooms = new Map<string, Room>();
 
@@ -46,9 +47,14 @@ export class Room {
 
   private io: Io;
   private timer: NodeJS.Timeout | null = null;
+  private responseTimer: NodeJS.Timeout | null = null;
   private clipEndsAt = 0;
   private remainingMs = 0;
   private awarded = { title: false, artist: false };
+  private submittedAnswer: { title: string; artist: string } | null = null;
+  private answerVerdict: { title: boolean; artist: boolean } | null = null;
+  private submittedBy: string | null = null;
+  private responseDeadline: number | null = null;
 
   constructor(io: Io, settings: RoomSettings) {
     this.io = io;
@@ -201,6 +207,9 @@ export class Room {
       teamScores: this.settings.mode === 'teams'
         ? this.teamScores.map((score, index) => ({ team: index + 1, name: this.settings.teamNames[index] ?? `Équipe ${index + 1}`, score }))
         : [],
+      submittedAnswer: this.phase === 'reveal' ? this.submittedAnswer : null,
+      answerVerdict: this.phase === 'reveal' ? this.answerVerdict : null,
+      responseDeadline: this.phase === 'buzzed' ? this.responseDeadline : null,
     };
   }
 
@@ -215,6 +224,12 @@ export class Room {
   private clearTimer(): void {
     if (this.timer) clearTimeout(this.timer);
     this.timer = null;
+  }
+
+  private clearResponseTimer(): void {
+    if (this.responseTimer) clearTimeout(this.responseTimer);
+    this.responseTimer = null;
+    this.responseDeadline = null;
   }
 
   /** Seconds of the clip already elapsed, used to resume a host that reconnected. */
@@ -294,8 +309,12 @@ export class Room {
   nextRound(): void {
     this.emitAudio('stop');
     this.clearTimer();
+    this.clearResponseTimer();
     this.buzzedBy = null;
     this.awarded = { title: false, artist: false };
+    this.submittedAnswer = null;
+    this.answerVerdict = null;
+    this.submittedBy = null;
     for (const member of this.players.values()) member.lockedOut = false;
 
     if (this.round + 1 >= this.playlist.length) {
@@ -330,29 +349,50 @@ export class Room {
     this.clearTimer();
     this.remainingMs = Math.max(2000, this.clipEndsAt - Date.now());
     this.buzzedBy = playerId;
+    this.submittedBy = playerId;
     this.phase = 'buzzed';
+    this.submittedAnswer = null;
+    this.answerVerdict = null;
+    this.responseDeadline = Date.now() + RESPONSE_TIMEOUT_MS;
+    this.responseTimer = setTimeout(
+      () => this.submitAnswer(playerId, { title: '', artist: '' }),
+      RESPONSE_TIMEOUT_MS,
+    );
     this.touch();
     this.emitAudio('pause');
     this.broadcast();
   }
 
-  judge(title: boolean, artist: boolean): void {
-    if (this.phase !== 'buzzed' || !this.buzzedBy) return;
-    const member = this.players.get(this.buzzedBy);
+  submitAnswer(playerId: string, answer: { title: string; artist: string }): void {
+    if (this.phase !== 'buzzed' || !this.buzzedBy || this.buzzedBy !== playerId) return;
+    const member = this.players.get(playerId);
     if (!member) return;
+    this.clearResponseTimer();
+    this.submittedAnswer = {
+      title: answer.title.trim().slice(0, 120),
+      artist: answer.artist.trim().slice(0, 120),
+    };
+    this.answerVerdict = {
+      title:
+        !!this.submittedAnswer.title &&
+        answerMatches(this.submittedAnswer.title, this.currentTrack?.title ?? '', 'title'),
+      artist:
+        !!this.submittedAnswer.artist &&
+        answerMatches(this.submittedAnswer.artist, this.currentTrack?.artist ?? '', 'artist'),
+    };
 
-    if (title && !this.awarded.title) {
+    if (this.answerVerdict.title && !this.awarded.title) {
       member.score += POINTS.title;
       if (this.settings.mode === 'teams' && member.team) this.teamScores[member.team - 1] += POINTS.title;
       this.awarded.title = true;
     }
-    if (artist && !this.awarded.artist) {
+    if (this.answerVerdict.artist && !this.awarded.artist) {
       member.score += POINTS.artist;
       if (this.settings.mode === 'teams' && member.team) this.teamScores[member.team - 1] += POINTS.artist;
       this.awarded.artist = true;
     }
 
-    if (this.awarded.title && this.awarded.artist) {
+    if (this.answerVerdict.title || this.answerVerdict.artist) {
       this.reveal();
       return;
     }
@@ -377,8 +417,21 @@ export class Room {
     this.emitAudio('play');
   }
 
+  correctAnswer(field: 'title' | 'artist'): void {
+    if (this.phase !== 'reveal' || !this.submittedBy || !this.submittedAnswer || !this.answerVerdict) return;
+    if (this.awarded[field] || !this.submittedAnswer[field]) return;
+    const member = this.players.get(this.submittedBy);
+    if (!member) return;
+    member.score += POINTS[field];
+    if (this.settings.mode === 'teams' && member.team) this.teamScores[member.team - 1] += POINTS[field];
+    this.awarded[field] = true;
+    this.answerVerdict[field] = true;
+    this.broadcast();
+  }
+
   reveal(): void {
     this.clearTimer();
+    this.clearResponseTimer();
     this.phase = 'reveal';
     this.buzzedBy = null;
     this.touch();
@@ -388,10 +441,14 @@ export class Room {
 
   restart(): void {
     this.clearTimer();
+    this.clearResponseTimer();
     this.phase = 'lobby';
     this.round = -1;
     this.playlist = [];
     this.buzzedBy = null;
+    this.submittedAnswer = null;
+    this.answerVerdict = null;
+    this.submittedBy = null;
     for (const member of this.players.values()) {
       member.score = 0;
       member.lockedOut = false;

@@ -1,24 +1,54 @@
-import { useState } from 'react';
-import type { HostTrack, RoomState } from '../../../shared/types';
+import { useEffect, useState } from 'react';
+import type { RoomState } from '../../../shared/types';
 import Scores from '../components/Scores';
 import ConfirmModal from '../components/ConfirmModal';
 
 interface Props {
   state: RoomState;
-  track: HostTrack | null;
-  onJudge: (title: boolean, artist: boolean) => void;
+  onCorrectAnswer: (field: 'title' | 'artist') => void;
+  canSubmitAnswer: boolean;
+  onSubmitAnswer: (answer: { title: string; artist: string }) => void;
   onSkip: () => void;
   onNext: () => void;
   onCancel: () => void;
 }
 
-export default function HostGame({ state, track, onJudge, onSkip, onNext, onCancel }: Props) {
+export default function HostGame({
+  state,
+  onCorrectAnswer,
+  canSubmitAnswer,
+  onSubmitAnswer,
+  onSkip,
+  onNext,
+  onCancel,
+}: Props) {
   const buzzer = state.players.find((player) => player.id === state.buzzedBy) ?? null;
   const buzzerTeam = buzzer?.team
     ? state.teamScores.find((team) => team.team === buzzer.team)
     : null;
   const answer = state.answer;
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [answerTitle, setAnswerTitle] = useState('');
+  const [answerArtist, setAnswerArtist] = useState('');
+  const [remainingResponseSeconds, setRemainingResponseSeconds] = useState(0);
+
+  useEffect(() => {
+    if (state.phase !== 'buzzed' || !state.responseDeadline) {
+      setRemainingResponseSeconds(0);
+      return;
+    }
+    const update = () => setRemainingResponseSeconds(Math.max(0, Math.ceil((state.responseDeadline! - Date.now()) / 1000)));
+    update();
+    const timer = window.setInterval(update, 250);
+    return () => window.clearInterval(timer);
+  }, [state.phase, state.responseDeadline]);
+
+  useEffect(() => {
+    if (state.phase !== 'buzzed') {
+      setAnswerTitle('');
+      setAnswerArtist('');
+    }
+  }, [state.phase]);
 
   return (
     <div className="mx-auto grid max-w-6xl gap-6 px-4 py-8 lg:grid-cols-[1fr_300px]">
@@ -52,28 +82,43 @@ export default function HostGame({ state, track, onJudge, onSkip, onNext, onCanc
             {state.settings.mode === 'teams' && buzzerTeam && (
               <p className="text-lg font-semibold text-white/70">Équipe {buzzerTeam.name}</p>
             )}
-            <p className="text-white/60">Réponse attendue : titre et/ou artiste</p>
-            <div className="flex flex-wrap justify-center gap-3">
-              <button className="btn-primary" onClick={() => onJudge(true, true)}>
-                Titre + artiste (+2)
-              </button>
-              <button className="btn-ghost" onClick={() => onJudge(true, false)}>
-                Titre seul (+1)
-              </button>
-              <button className="btn-ghost" onClick={() => onJudge(false, true)}>
-                Artiste seul (+1)
-              </button>
-              <button className="btn bg-red-500/80" onClick={() => onJudge(false, false)}>
-                Raté
-              </button>
-            </div>
-            {track && (
-              <details className="text-sm text-white/40">
-                <summary className="cursor-pointer">Voir la réponse</summary>
-                <p className="mt-2">
-                  {track.title} — {track.artist}
-                </p>
-              </details>
+            <p className="text-white/60">
+              {remainingResponseSeconds > 0
+                ? `Réponse en cours… ${remainingResponseSeconds}s restantes`
+                : 'La personne tape sa réponse sur son appareil.'}
+            </p>
+            {canSubmitAnswer && (
+              <form
+                className="w-full max-w-md space-y-3 rounded-xl bg-white/5 p-4 text-left"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  onSubmitAnswer({ title: answerTitle, artist: answerArtist });
+                }}
+              >
+                <h2 className="text-lg font-bold">Ta réponse</h2>
+                <label className="block">
+                  <span className="text-sm text-white/60">Titre</span>
+                  <input
+                    autoFocus
+                    value={answerTitle}
+                    onChange={(event) => setAnswerTitle(event.target.value)}
+                    className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-white outline-none focus:border-neon"
+                    maxLength={120}
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-sm text-white/60">Artiste</span>
+                  <input
+                    value={answerArtist}
+                    onChange={(event) => setAnswerArtist(event.target.value)}
+                    className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-white outline-none focus:border-neon"
+                    maxLength={120}
+                  />
+                </label>
+                <button type="submit" className="btn-primary w-full">
+                  Valider ma réponse
+                </button>
+              </form>
             )}
           </>
         )}
@@ -85,13 +130,44 @@ export default function HostGame({ state, track, onJudge, onSkip, onNext, onCanc
               <p className="text-3xl font-black">{answer.title}</p>
               <p className="text-xl text-white/60">{answer.artist}</p>
             </div>
+            {state.submittedAnswer && state.answerVerdict && (
+              <div className="w-full max-w-md rounded-xl bg-white/5 p-4 text-left text-sm">
+                <p className="mb-2 font-semibold text-white/70">Réponse tapée</p>
+                {(['title', 'artist'] as const).map((field) => {
+                  const label = field === 'title' ? 'Titre' : 'Artiste';
+                  const value = state.submittedAnswer?.[field];
+                  const accepted = state.answerVerdict?.[field];
+                  return (
+                    <div key={field} className="mt-2 flex items-center justify-between gap-3">
+                      <span className="min-w-0 truncate">
+                        <span className="text-white/50">{label} : </span>
+                        {value || 'non renseigné'}
+                      </span>
+                      {value && (
+                        accepted ? (
+                          <span className="shrink-0 text-emerald-300">Validé</span>
+                        ) : (
+                          <button
+                            type="button"
+                            className="btn-ghost shrink-0 px-2 py-1 text-xs"
+                            onClick={() => onCorrectAnswer(field)}
+                          >
+                            En fait c’était bon
+                          </button>
+                        )
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
             <button className="btn-primary" onClick={onNext}>
               Manche suivante
             </button>
           </>
         )}
 
-        {(state.phase === 'listening' || state.phase === 'countdown') && (
+        {(state.phase === 'listening' || state.phase === 'countdown' || state.phase === 'buzzed') && (
           <button className="btn-ghost" onClick={onSkip}>
             Passer / révéler
           </button>

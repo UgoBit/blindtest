@@ -18,7 +18,8 @@ reçoivent jamais ni l'URL audio ni la réponse.
 - Niveaux facile / moyen / difficile / mixte : chaque thème est trié par popularité Deezer
   puis découpé en trois paliers (les charts sont complétés par les radios du genre pour que
   le niveau difficile contienne autre chose que des tubes)
-- Buzzer temps réel (premier arrivé verrouille l'audio), validation titre / artiste par l'hôte
+- Buzzer temps réel (premier arrivé verrouille l'audio), puis réponse saisie par la personne qui buzze
+- Validation souple automatique du titre et/ou de l'artiste ; l'hôte peut corriger le verdict à la révélation
 - Mauvaise réponse = joueur éliminé pour la manche, l'extrait reprend
 - Reconnexion automatique (rafraîchissement, téléphone verrouillé), scores et podium
 
