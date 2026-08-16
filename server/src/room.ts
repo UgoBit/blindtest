@@ -364,7 +364,7 @@ export class Room {
         if (socket && typeof socket.disconnect === 'function') {
           try {
             socket.disconnect(true);
-          } catch (e) {
+          } catch {
             // ignore
           }
         }
