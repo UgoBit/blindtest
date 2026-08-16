@@ -64,7 +64,7 @@ function sanitizeSettings(input: Partial<RoomSettings>): RoomSettings {
   const requestedHostAudio = input.audioHostEnabled !== false;
   const audioPlayersEnabled = input.audioPlayersEnabled === true;
   return {
-    themes: themes.length > 0 ? themes.slice(0, 8) : ['top'],
+    themes: themes.slice(0, 8),
     difficulty,
     rounds: Math.min(30, Math.max(1, Math.round(input.rounds ?? 10))),
     clipSeconds: Math.min(30, Math.max(5, Math.round(input.clipSeconds ?? 30))),

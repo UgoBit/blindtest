@@ -14,12 +14,6 @@ interface Props {
   onKick: (playerId: string) => void;
 }
 
-const CATEGORY_LABELS: Record<Theme['category'], string> = {
-  genre: 'Genres',
-  epoque: 'Époques',
-  culture: 'Culture',
-};
-
 const teamNameFor = (names: string[] | undefined, index: number): string =>
   names?.[index]?.trim() || `Équipe ${index + 1}`;
 
@@ -64,7 +58,8 @@ export default function Lobby({
   const populatedTeams = teams.filter((team) => team.members.length > 0).length;
   const teamBuzzers = guests.length + (settings.hostPlays ? 1 : 0);
   const canStart =
-    mode === 'solo' ? true : mode === 'teams' ? teamBuzzers > 0 && populatedTeams >= 2 : guests.length > 0;
+    settings.themes.length > 0 &&
+    (mode === 'solo' ? true : mode === 'teams' ? teamBuzzers > 0 && populatedTeams >= 2 : guests.length > 0);
 
   useEffect(() => {
     if (host?.name) setTeamName(host.name);
@@ -78,7 +73,7 @@ export default function Lobby({
     const next = settings.themes.includes(id)
       ? settings.themes.filter((theme) => theme !== id)
       : [...settings.themes, id];
-    onUpdate({ themes: next.length > 0 ? next : ['top'] });
+    onUpdate({ themes: next });
   };
 
   const updateTeamCount = (value: number) => {
@@ -179,32 +174,55 @@ export default function Lobby({
     <div className="mx-auto grid max-w-6xl gap-6 px-4 py-8 lg:grid-cols-[1fr_320px]">
       <div className="space-y-6">
         <section className="card">
-          <h2 className="mb-3 text-xl font-bold">Thèmes</h2>
-          {(['genre', 'epoque', 'culture'] as const).map((category) => (
-            <div key={category} className="mb-4 last:mb-0">
-              <p className="mb-2 text-xs uppercase tracking-widest text-white/40">{CATEGORY_LABELS[category]}</p>
-              <div className="flex flex-wrap gap-2">
-                {themes.filter((theme) => theme.category === category).map((theme) => {
-                  const active = settings.themes.includes(theme.id);
-                  return (
-                    <button
-                      key={theme.id}
-                      type="button"
-                      onClick={() => toggleTheme(theme.id)}
-                      className={`rounded-xl border px-3 py-2 text-sm transition ${
-                        active
-                          ? 'border-neon bg-neon/20 text-white'
-                          : 'border-white/10 bg-white/5 text-white/70 hover:bg-white/10'
-                      }`}
-                    >
-                      <span className="mr-1">{theme.emoji}</span>
-                      {theme.label}
-                    </button>
-                  );
-                })}
-              </div>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-bold">Thèmes</h2>
+              <p className="mt-1 text-sm text-white/60">Choisis un ou plusieurs thèmes pour la partie.</p>
             </div>
-          ))}
+            <button
+              type="button"
+              onClick={() => onUpdate({ themes: [] })}
+              disabled={settings.themes.length === 0}
+              className="btn-ghost px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Tout désélectionner
+            </button>
+          </div>
+          <p className="mt-3 text-sm font-semibold text-neon">
+            {settings.themes.length} thème{settings.themes.length > 1 ? 's' : ''} sélectionné
+            {settings.themes.length > 1 ? 's' : ''}
+          </p>
+          <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {themes.map((theme) => {
+              const active = settings.themes.includes(theme.id);
+              return (
+                <button
+                  key={theme.id}
+                  type="button"
+                  onClick={() => toggleTheme(theme.id)}
+                  aria-pressed={active}
+                  className={`flex items-center gap-3 rounded-xl border px-3 py-3 text-left text-sm transition ${
+                    active
+                      ? 'border-neon bg-neon/20 text-white'
+                      : 'border-white/10 bg-white/5 text-white/70 hover:bg-white/10'
+                  }`}
+                >
+                  <span
+                    aria-hidden="true"
+                    className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border text-xs font-bold ${
+                      active ? 'border-neon bg-neon text-slate-950' : 'border-white/25 text-transparent'
+                    }`}
+                  >
+                    ✓
+                  </span>
+                  <span className="min-w-0">
+                    <span className="mr-1">{theme.emoji}</span>
+                    {theme.label}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </section>
 
         <section className="card">
@@ -483,11 +501,18 @@ export default function Lobby({
         <button className="btn-primary w-full text-lg" disabled={!canStart} onClick={onStart}>
           {canStart
             ? `Lancer la partie (${mode === 'solo' ? '1 joueur' : `${teamBuzzers} buzzer${teamBuzzers > 1 ? 's' : ''}`})`
+            : settings.themes.length === 0
+              ? 'Choisissez au moins un thème'
             : mode === 'teams'
               ? 'Répartissez les joueurs dans au moins 2 équipes'
               : 'En attente de joueurs…'}
         </button>
-        {mode === 'teams' && !canStart && (
+        {!canStart && settings.themes.length === 0 && (
+          <p className="text-center text-sm text-white/50">
+            Sélectionnez au moins un thème avant de lancer la partie.
+          </p>
+        )}
+        {mode === 'teams' && !canStart && settings.themes.length > 0 && (
           <p className="text-center text-sm text-white/50">
             Au moins deux équipes doivent avoir un membre avant de lancer.
           </p>
