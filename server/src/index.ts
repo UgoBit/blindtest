@@ -177,7 +177,20 @@ io.on('connection', (socket) => {
   });
 
   socket.on('preview_failed', () => {
-    if (isHost()) void room()?.retryPreview();
+    const current = room();
+    if (!current) return;
+    if (isHost()) {
+      void current.retryPreview();
+      return;
+    }
+    const member = playerId ? current.players.get(playerId) : undefined;
+    const playerCanRetry =
+      member &&
+      !member.isHost &&
+      current.settings.audioPlayersEnabled &&
+      !current.settings.audioHostEnabled &&
+      ['countdown', 'listening', 'buzzed'].includes(current.phase);
+    if (playerCanRetry) void current.retryPreview();
   });
 
   socket.on('resync', () => {

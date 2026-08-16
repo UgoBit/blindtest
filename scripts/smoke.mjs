@@ -140,6 +140,10 @@ if (resyncPlayerTrack.index !== playerTrack.index || typeof resyncPlayerTrack.st
   throw new Error('player track resync mismatch');
 }
 console.log('player audio track and resync ok');
+const fallbackTrackPromise = wait(teamPlayers[0].socket, 'player_track');
+teamPlayers[0].socket.emit('preview_failed');
+await fallbackTrackPromise;
+console.log('player preview fallback ok');
 
 teamPlayers[0].socket.emit('buzz');
 const wrongBuzz = await wait(teamHost, 'room_state', (state) => state.phase === 'buzzed');
@@ -198,9 +202,16 @@ hostOnlyPlayer.on('player_track', () => {
 });
 const hostOnlyTrackPromise = wait(hostOnlyHost, 'host_track');
 hostOnlyHost.emit('start_game');
-await hostOnlyTrackPromise;
+const hostOnlyTrack = await hostOnlyTrackPromise;
+let unexpectedHostRetry = false;
+const onUnexpectedHostRetry = (nextTrack) => {
+  if (nextTrack.index === hostOnlyTrack.index) unexpectedHostRetry = true;
+};
+hostOnlyHost.on('host_track', onUnexpectedHostRetry);
+hostOnlyPlayer.emit('preview_failed');
 await new Promise((resolve) => setTimeout(resolve, 500));
 if (unexpectedPlayerTrack) throw new Error('player received preview in host output mode');
+if (unexpectedHostRetry) throw new Error('player retried preview while host output was active');
 console.log('host-only audio privacy ok');
 hostOnlyPlayer.close();
 hostOnlyHost.close();
