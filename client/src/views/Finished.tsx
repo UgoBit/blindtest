@@ -29,10 +29,10 @@ export default function Finished({
         </p>
       ) : (
         <p className="text-2xl">
-          🤝 <span className="font-bold text-neon">Égalité</span>{' '}
+          🤝 <span className="font-bold text-neon">Égalité</span>
           {best === 0
             ? ', personne n’a marqué'
-            : `entre ${names.slice(0, -1).join(', ')} et ${names[names.length - 1]} avec ${best} pts`}
+            : ` entre ${names.slice(0, -1).join(', ')} et ${names[names.length - 1]} avec ${best} pts`}
         </p>
       )}
       <div className="card text-left">
