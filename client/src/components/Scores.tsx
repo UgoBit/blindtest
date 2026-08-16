@@ -41,8 +41,7 @@ export default function Scores({ players, teams = [], mode = 'phones', highlight
                       {player.name}
                       {player.isHost && (
                         <span className="ml-2 rounded bg-white/10 px-1.5 py-0.5 text-[10px]">écran</span>
-                      )}{' '}
-                      <span className="text-white/35">({player.score} pts)</span>
+                      )}
                     </li>
                   ))
                 ) : (

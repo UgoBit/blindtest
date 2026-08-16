@@ -83,6 +83,8 @@ const teamRoom = await new Promise((resolve) =>
       mode: 'teams',
       teamCount: 2,
       teamNames: ['Les Bleus', 'Les Rouges'],
+      audioHostEnabled: false,
+      audioPlayersEnabled: true,
     },
     resolve,
   ),
@@ -108,9 +110,22 @@ await wait(teamPlayers[0].socket, 'room_state', (state) =>
 );
 
 const teamTrackPromise = wait(teamHost, 'host_track');
+const playerTrackPromise = wait(teamPlayers[0].socket, 'player_track');
+let hostAudioCommand = false;
+teamHost.on('audio', () => {
+  hostAudioCommand = true;
+});
 teamHost.emit('start_game');
 await teamTrackPromise;
+const playerTrack = await playerTrackPromise;
+if (!playerTrack.previewUrl.startsWith('http')) throw new Error('player preview url missing');
+if (typeof playerTrack.startAt !== 'number') throw new Error('player startAt missing');
+if ('title' in playerTrack || 'artist' in playerTrack || 'cover' in playerTrack) {
+  throw new Error('private fields leaked in player_track');
+}
 await wait(teamPlayers[0].socket, 'room_state', (state) => state.phase === 'listening');
+await new Promise((resolve) => setTimeout(resolve, 3500));
+if (hostAudioCommand) throw new Error('arbitrating host received a player-output audio command');
 const privateState = await new Promise((resolve) => {
   teamPlayers[0].socket.once('room_state', resolve);
   teamPlayers[0].socket.emit('resync');
@@ -118,6 +133,13 @@ const privateState = await new Promise((resolve) => {
 if (privateState.answer !== null || privateState.track?.cover !== null) {
   throw new Error('team player answer leaked before reveal');
 }
+const resyncPlayerTrackPromise = wait(teamPlayers[0].socket, 'player_track');
+teamPlayers[0].socket.emit('resync');
+const resyncPlayerTrack = await resyncPlayerTrackPromise;
+if (resyncPlayerTrack.index !== playerTrack.index || typeof resyncPlayerTrack.startAt !== 'number') {
+  throw new Error('player track resync mismatch');
+}
+console.log('player audio track and resync ok');
 
 teamPlayers[0].socket.emit('buzz');
 const wrongBuzz = await wait(teamHost, 'room_state', (state) => state.phase === 'buzzed');
@@ -154,5 +176,33 @@ console.log('team round reset ok');
 
 for (const player of teamPlayers) player.socket.close();
 teamHost.close();
+
+const hostOnlyHost = connect();
+await wait(hostOnlyHost, 'connect');
+const hostOnlyRoom = await new Promise((resolve) =>
+  hostOnlyHost.emit(
+    'create_room',
+    { themes: ['top'], difficulty: 'facile', rounds: 1, clipSeconds: 10, hostPlays: false },
+    resolve,
+  ),
+);
+const hostOnlyPlayer = connect();
+await wait(hostOnlyPlayer, 'connect');
+const hostOnlyJoin = await new Promise((resolve) =>
+  hostOnlyPlayer.emit('join_room', { code: hostOnlyRoom.code, name: 'Sans son' }, resolve),
+);
+if (!hostOnlyJoin.ok) throw new Error(hostOnlyJoin.error);
+let unexpectedPlayerTrack = false;
+hostOnlyPlayer.on('player_track', () => {
+  unexpectedPlayerTrack = true;
+});
+const hostOnlyTrackPromise = wait(hostOnlyHost, 'host_track');
+hostOnlyHost.emit('start_game');
+await hostOnlyTrackPromise;
+await new Promise((resolve) => setTimeout(resolve, 500));
+if (unexpectedPlayerTrack) throw new Error('player received preview in host output mode');
+console.log('host-only audio privacy ok');
+hostOnlyPlayer.close();
+hostOnlyHost.close();
 console.log('SMOKE OK');
 process.exit(0);

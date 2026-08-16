@@ -14,12 +14,16 @@ export default function PlayerGame({ state, playerId, onBuzz }: Props) {
   const buzzerTeam = buzzer?.team
     ? state.teamScores.find((team) => team.team === buzzer.team)
     : null;
+  const currentTeamScore = me?.team
+    ? state.teamScores.find((team) => team.team === me.team)?.score ?? 0
+    : 0;
+  const displayedScore = state.settings.mode === 'teams' ? currentTeamScore : me?.score ?? 0;
   const iBuzzed = state.buzzedBy === playerId;
   const canBuzz = state.phase === 'listening' && !me?.lockedOut;
   const [flash, setFlash] = useState(false);
   const [coverFailed, setCoverFailed] = useState(false);
   const previousPhase = useRef(state.phase);
-  const previousScore = useRef(me?.score ?? 0);
+  const previousScore = useRef(displayedScore);
   const [revealDelta, setRevealDelta] = useState(0);
 
   useEffect(() => {
@@ -32,11 +36,11 @@ export default function PlayerGame({ state, playerId, onBuzz }: Props) {
 
   useEffect(() => {
     if (state.phase === 'reveal' && previousPhase.current !== 'reveal') {
-      setRevealDelta((me?.score ?? 0) - previousScore.current);
+      setRevealDelta(displayedScore - previousScore.current);
     }
     previousPhase.current = state.phase;
-    previousScore.current = me?.score ?? 0;
-  }, [me?.score, state.phase]);
+    previousScore.current = displayedScore;
+  }, [displayedScore, state.phase]);
 
   useEffect(() => {
     setCoverFailed(false);
@@ -60,7 +64,7 @@ export default function PlayerGame({ state, playerId, onBuzz }: Props) {
       <header className="flex items-center justify-between text-sm text-white/60">
         <span>{me?.name}</span>
         <span>
-          Manche {state.track?.index ?? 0}/{state.track?.total ?? 0} · {me?.score ?? 0} pts
+          Manche {state.track?.index ?? 0}/{state.track?.total ?? 0} · {displayedScore} pts
         </span>
       </header>
 
@@ -109,7 +113,7 @@ export default function PlayerGame({ state, playerId, onBuzz }: Props) {
                   <span className="buzzer-avatar text-3xl">{buzzerInitial}</span>
                   <span className="max-w-full break-words text-3xl leading-tight">{buzzer?.name ?? 'Quelqu’un'}</span>
                   <span className="text-base font-semibold normal-case tracking-normal text-white/70">
-                    {buzzer?.score ?? 0} pts
+                    {state.settings.mode === 'teams' ? buzzerTeam?.score ?? 0 : buzzer?.score ?? 0} pts
                   </span>
                   {state.settings.mode === 'teams' && buzzerTeam && (
                     <span className="text-sm font-semibold normal-case tracking-normal text-white/65">

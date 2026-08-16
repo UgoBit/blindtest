@@ -65,6 +65,20 @@ export class Room {
     return this.hostId ? (this.players.get(this.hostId)?.socketId ?? null) : null;
   }
 
+  private emitAudio(action: 'play' | 'pause' | 'stop'): void {
+    const socketIds: string[] = [];
+    const hostSocketId = this.hostSocketId;
+    if (this.settings.audioHostEnabled && hostSocketId) socketIds.push(hostSocketId);
+    if (this.settings.audioPlayersEnabled) {
+      for (const member of this.players.values()) {
+        if (!member.isHost && member.socketId) socketIds.push(member.socketId);
+      }
+    }
+    for (const socketId of socketIds) {
+      this.io.to(socketId).emit('audio', { action, at: Date.now() });
+    }
+  }
+
   addPlayer(playerId: string, name: string, socketId: string, isHost = false): Member {
     const existing = this.players.get(playerId);
     const nextTeamIndex = this.settings.mode === 'teams' && !isHost
@@ -107,7 +121,14 @@ export class Room {
     member.connected = true;
     this.touch();
     this.broadcast();
-    if (member.isHost) this.resyncHost();
+    if (member.isHost) {
+      this.resyncHost();
+    } else {
+      this.sendPlayerTrack(socketId);
+      if (this.settings.audioPlayersEnabled && this.phase === 'listening') {
+        this.io.to(socketId).emit('audio', { action: 'play', at: Date.now() });
+      }
+    }
     return true;
   }
 
@@ -219,12 +240,31 @@ export class Room {
     });
   }
 
+  private sendPlayerTrack(socketId: string, previewUrl?: string): void {
+    const track = this.currentTrack;
+    if (!track || !this.settings.audioPlayersEnabled) return;
+    this.io.to(socketId).emit('player_track', {
+      index: this.round + 1,
+      total: this.playlist.length,
+      previewUrl: previewUrl ?? track.previewUrl,
+      startAt: this.elapsedSeconds(),
+    });
+  }
+
+  private sendRoundTracks(previewUrl?: string): void {
+    this.sendHostTrack(previewUrl);
+    if (!this.settings.audioPlayersEnabled) return;
+    for (const member of this.players.values()) {
+      if (!member.isHost && member.socketId) this.sendPlayerTrack(member.socketId, previewUrl);
+    }
+  }
+
   /** Restores audio on a host device that reconnected in the middle of a round. */
   resyncHost(): void {
     if (!['countdown', 'listening', 'buzzed', 'reveal'].includes(this.phase)) return;
     this.sendHostTrack();
     const socketId = this.hostSocketId;
-    if (this.phase === 'listening' && socketId) {
+    if (this.phase === 'listening' && socketId && this.settings.audioHostEnabled) {
       this.io.to(socketId).emit('audio', { action: 'play', at: Date.now() });
     }
   }
@@ -247,6 +287,7 @@ export class Room {
   }
 
   nextRound(): void {
+    this.emitAudio('stop');
     this.clearTimer();
     this.buzzedBy = null;
     this.awarded = { title: false, artist: false };
@@ -262,14 +303,14 @@ export class Room {
     this.phase = 'countdown';
     this.touch();
     this.broadcast();
-    this.sendHostTrack();
+    this.sendRoundTracks();
 
     this.timer = setTimeout(() => {
       this.phase = 'listening';
       this.remainingMs = this.settings.clipSeconds * 1000;
       this.startClock();
       this.broadcast();
-      this.io.to(this.code).emit('audio', { action: 'play', at: Date.now() });
+      this.emitAudio('play');
     }, COUNTDOWN_MS);
   }
 
@@ -286,7 +327,7 @@ export class Room {
     this.buzzedBy = playerId;
     this.phase = 'buzzed';
     this.touch();
-    this.io.to(this.code).emit('audio', { action: 'pause', at: Date.now() });
+    this.emitAudio('pause');
     this.broadcast();
   }
 
@@ -328,7 +369,7 @@ export class Room {
     this.phase = 'listening';
     this.startClock();
     this.broadcast();
-    this.io.to(this.code).emit('audio', { action: 'play', at: Date.now() });
+    this.emitAudio('play');
   }
 
   reveal(): void {
@@ -336,7 +377,7 @@ export class Room {
     this.phase = 'reveal';
     this.buzzedBy = null;
     this.touch();
-    this.io.to(this.code).emit('audio', { action: 'pause', at: Date.now() });
+    this.emitAudio('pause');
     this.broadcast();
   }
 
@@ -360,7 +401,7 @@ export class Room {
     if (!track) return;
     const url = await itunesPreview(track.title, track.artist);
     if (url) {
-      this.sendHostTrack(url);
+      this.sendRoundTracks(url);
       return;
     }
     this.nextRound();

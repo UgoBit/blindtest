@@ -276,6 +276,40 @@ export default function Lobby({
               </button>
             ))}
           </div>
+          {isHost && (
+            <div className="mt-5 border-t border-white/10 pt-4">
+              <h3 className="font-semibold">Sortie du son</h3>
+              <p className="mt-1 text-sm text-white/60">
+                Active au moins une sortie. Pour jouer à distance, active le son sur chaque appareil.
+              </p>
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => onUpdate({ audioHostEnabled: !settings.audioHostEnabled })}
+                  className={`rounded-xl border px-3 py-3 text-left text-sm ${
+                    settings.audioHostEnabled
+                      ? 'border-neon bg-neon/20'
+                      : 'border-white/10 bg-white/5 text-white/70'
+                  }`}
+                >
+                  <span className="block font-semibold">Son sur cet écran</span>
+                  <span className="mt-1 block text-xs text-white/55">L’écran de l’hôte diffuse la musique.</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onUpdate({ audioPlayersEnabled: !settings.audioPlayersEnabled })}
+                  className={`rounded-xl border px-3 py-3 text-left text-sm ${
+                    settings.audioPlayersEnabled
+                      ? 'border-neon bg-neon/20'
+                      : 'border-white/10 bg-white/5 text-white/70'
+                  }`}
+                >
+                  <span className="block font-semibold">Son sur chaque appareil</span>
+                  <span className="mt-1 block text-xs text-white/55">Pour jouer chacun chez soi.</span>
+                </button>
+              </div>
+            </div>
+          )}
         </section>
 
         {(mode === 'solo' || mode === 'teams') && (
