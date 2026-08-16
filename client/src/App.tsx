@@ -152,7 +152,7 @@ export default function App() {
 
   const createRoom = useCallback(() => {
     const settings: RoomSettings = {
-      themes: ['top'],
+      themes: [],
       difficulty: 'moyen',
       rounds: 10,
       clipSeconds: 30,

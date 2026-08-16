@@ -215,5 +215,24 @@ if (unexpectedHostRetry) throw new Error('player retried preview while host outp
 console.log('host-only audio privacy ok');
 hostOnlyPlayer.close();
 hostOnlyHost.close();
+
+const noThemeHost = connect();
+await wait(noThemeHost, 'connect');
+const noThemeRoom = await new Promise((resolve) =>
+  noThemeHost.emit(
+    'create_room',
+    { themes: [], difficulty: 'facile', rounds: 1, clipSeconds: 10, hostPlays: false },
+    resolve,
+  ),
+);
+if (!noThemeRoom.ok) throw new Error(noThemeRoom.error);
+const noThemeError = wait(noThemeHost, 'error_message');
+noThemeHost.emit('start_game');
+const noThemeMessage = await noThemeError;
+if (noThemeMessage !== 'Choisissez au moins un thème avant de lancer la partie.') {
+  throw new Error(`unexpected no-theme error: ${noThemeMessage}`);
+}
+console.log('empty theme start rejected');
+noThemeHost.close();
 console.log('SMOKE OK');
 process.exit(0);

@@ -272,6 +272,10 @@ export class Room {
 
   async start(): Promise<void> {
     if (this.phase !== 'lobby') return;
+    if (this.settings.themes.length === 0) {
+      this.io.to(this.code).emit('error_message', 'Choisissez au moins un thème avant de lancer la partie.');
+      return;
+    }
     this.playlist = await buildPlaylist(
       this.settings.themes,
       this.settings.rounds,
