@@ -36,6 +36,13 @@ export interface HostTrack extends PublicTrack {
   startAt: number;
 }
 
+/** Track info sent to players when their devices output the audio. */
+export interface PlayerTrack extends PublicTrack {
+  previewUrl: string;
+  /** Offset in seconds the player should resume the clip from. */
+  startAt: number;
+}
+
 export type Difficulty = 'facile' | 'moyen' | 'difficile' | 'mixte';
 
 export const DIFFICULTIES: { id: Difficulty; label: string; hint: string }[] = [
@@ -54,6 +61,8 @@ export interface RoomSettings {
   mode: GameMode;
   teamCount: number;
   teamNames: string[];
+  audioHostEnabled: boolean;
+  audioPlayersEnabled: boolean;
 }
 
 export interface RoomState {
@@ -67,11 +76,19 @@ export interface RoomState {
   answer: { title: string; artist: string; cover: string | null } | null;
   track: PublicTrack | null;
   round: number;
+  teamScores: TeamScore[];
+}
+
+export interface TeamScore {
+  team: number;
+  name: string;
+  score: number;
 }
 
 export interface ServerToClientEvents {
   room_state: (state: RoomState) => void;
   host_track: (track: HostTrack) => void;
+  player_track: (track: PlayerTrack) => void;
   error_message: (message: string) => void;
   /** Emitted when the room is closed by the host. */
   room_closed: () => void;

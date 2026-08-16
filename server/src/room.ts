@@ -41,6 +41,7 @@ export class Room {
   playlist: Track[] = [];
   round = -1;
   buzzedBy: string | null = null;
+  teamScores: number[];
   lastActivity = Date.now();
 
   private io: Io;
@@ -52,6 +53,7 @@ export class Room {
   constructor(io: Io, settings: RoomSettings) {
     this.io = io;
     this.settings = settings;
+    this.teamScores = Array.from({ length: settings.teamCount }, () => 0);
     rooms.set(this.code, this);
   }
 
@@ -61,6 +63,20 @@ export class Room {
 
   private get hostSocketId(): string | null {
     return this.hostId ? (this.players.get(this.hostId)?.socketId ?? null) : null;
+  }
+
+  private emitAudio(action: 'play' | 'pause' | 'stop'): void {
+    const socketIds: string[] = [];
+    const hostSocketId = this.hostSocketId;
+    if (this.settings.audioHostEnabled && hostSocketId) socketIds.push(hostSocketId);
+    if (this.settings.audioPlayersEnabled) {
+      for (const member of this.players.values()) {
+        if (!member.isHost && member.socketId) socketIds.push(member.socketId);
+      }
+    }
+    for (const socketId of socketIds) {
+      this.io.to(socketId).emit('audio', { action, at: Date.now() });
+    }
   }
 
   addPlayer(playerId: string, name: string, socketId: string, isHost = false): Member {
@@ -105,7 +121,14 @@ export class Room {
     member.connected = true;
     this.touch();
     this.broadcast();
-    if (member.isHost) this.resyncHost();
+    if (member.isHost) {
+      this.resyncHost();
+    } else {
+      this.sendPlayerTrack(socketId);
+      if (this.settings.audioPlayersEnabled && this.phase === 'listening') {
+        this.io.to(socketId).emit('audio', { action: 'play', at: Date.now() });
+      }
+    }
     return true;
   }
 
@@ -136,6 +159,11 @@ export class Room {
     }
     member.team = Math.min(this.settings.teamCount, Math.max(1, Number(team) || 1));
     this.touch();
+    this.broadcast();
+  }
+
+  resizeTeamScores(): void {
+    this.teamScores = Array.from({ length: this.settings.teamCount }, (_, index) => this.teamScores[index] ?? 0);
     this.broadcast();
   }
 
@@ -170,6 +198,9 @@ export class Room {
           : null,
       track: track ? { index: this.round + 1, total: this.playlist.length, cover: null } : null,
       round: this.round,
+      teamScores: this.settings.mode === 'teams'
+        ? this.teamScores.map((score, index) => ({ team: index + 1, name: this.settings.teamNames[index] ?? `Équipe ${index + 1}`, score }))
+        : [],
     };
   }
 
@@ -209,12 +240,32 @@ export class Room {
     });
   }
 
+  private sendPlayerTrack(socketId: string, previewUrl?: string): void {
+    const track = this.currentTrack;
+    if (!track || !this.settings.audioPlayersEnabled) return;
+    this.io.to(socketId).emit('player_track', {
+      index: this.round + 1,
+      total: this.playlist.length,
+      cover: null,
+      previewUrl: previewUrl ?? track.previewUrl,
+      startAt: this.elapsedSeconds(),
+    });
+  }
+
+  private sendRoundTracks(previewUrl?: string): void {
+    this.sendHostTrack(previewUrl);
+    if (!this.settings.audioPlayersEnabled) return;
+    for (const member of this.players.values()) {
+      if (!member.isHost && member.socketId) this.sendPlayerTrack(member.socketId, previewUrl);
+    }
+  }
+
   /** Restores audio on a host device that reconnected in the middle of a round. */
   resyncHost(): void {
     if (!['countdown', 'listening', 'buzzed', 'reveal'].includes(this.phase)) return;
     this.sendHostTrack();
     const socketId = this.hostSocketId;
-    if (this.phase === 'listening' && socketId) {
+    if (this.phase === 'listening' && socketId && this.settings.audioHostEnabled) {
       this.io.to(socketId).emit('audio', { action: 'play', at: Date.now() });
     }
   }
@@ -231,11 +282,13 @@ export class Room {
       return;
     }
     for (const member of this.players.values()) member.score = 0;
+    this.teamScores = Array.from({ length: this.settings.teamCount }, () => 0);
     this.round = -1;
     this.nextRound();
   }
 
   nextRound(): void {
+    this.emitAudio('stop');
     this.clearTimer();
     this.buzzedBy = null;
     this.awarded = { title: false, artist: false };
@@ -251,14 +304,14 @@ export class Room {
     this.phase = 'countdown';
     this.touch();
     this.broadcast();
-    this.sendHostTrack();
+    this.sendRoundTracks();
 
     this.timer = setTimeout(() => {
       this.phase = 'listening';
       this.remainingMs = this.settings.clipSeconds * 1000;
       this.startClock();
       this.broadcast();
-      this.io.to(this.code).emit('audio', { action: 'play', at: Date.now() });
+      this.emitAudio('play');
     }, COUNTDOWN_MS);
   }
 
@@ -275,7 +328,7 @@ export class Room {
     this.buzzedBy = playerId;
     this.phase = 'buzzed';
     this.touch();
-    this.io.to(this.code).emit('audio', { action: 'pause', at: Date.now() });
+    this.emitAudio('pause');
     this.broadcast();
   }
 
@@ -286,10 +339,12 @@ export class Room {
 
     if (title && !this.awarded.title) {
       member.score += POINTS.title;
+      if (this.settings.mode === 'teams' && member.team) this.teamScores[member.team - 1] += POINTS.title;
       this.awarded.title = true;
     }
     if (artist && !this.awarded.artist) {
       member.score += POINTS.artist;
+      if (this.settings.mode === 'teams' && member.team) this.teamScores[member.team - 1] += POINTS.artist;
       this.awarded.artist = true;
     }
 
@@ -299,7 +354,13 @@ export class Room {
     }
 
     // Partial or wrong answer: the player is out for this track, the clip resumes.
-    member.lockedOut = true;
+    if (this.settings.mode === 'teams' && member.team) {
+      for (const teammate of this.players.values()) {
+        if (teammate.team === member.team) teammate.lockedOut = true;
+      }
+    } else {
+      member.lockedOut = true;
+    }
     this.buzzedBy = null;
     const stillPlaying = [...this.players.values()].some((p) => this.canBuzz(p.id));
     if (!stillPlaying) {
@@ -309,7 +370,7 @@ export class Room {
     this.phase = 'listening';
     this.startClock();
     this.broadcast();
-    this.io.to(this.code).emit('audio', { action: 'play', at: Date.now() });
+    this.emitAudio('play');
   }
 
   reveal(): void {
@@ -317,7 +378,7 @@ export class Room {
     this.phase = 'reveal';
     this.buzzedBy = null;
     this.touch();
-    this.io.to(this.code).emit('audio', { action: 'pause', at: Date.now() });
+    this.emitAudio('pause');
     this.broadcast();
   }
 
@@ -331,6 +392,7 @@ export class Room {
       member.score = 0;
       member.lockedOut = false;
     }
+    this.teamScores = Array.from({ length: this.settings.teamCount }, () => 0);
     this.broadcast();
   }
 
@@ -340,7 +402,7 @@ export class Room {
     if (!track) return;
     const url = await itunesPreview(track.title, track.artist);
     if (url) {
-      this.sendHostTrack(url);
+      this.sendRoundTracks(url);
       return;
     }
     this.nextRound();
@@ -364,7 +426,7 @@ export class Room {
         if (socket && typeof socket.disconnect === 'function') {
           try {
             socket.disconnect(true);
-          } catch (e) {
+          } catch {
             // ignore
           }
         }

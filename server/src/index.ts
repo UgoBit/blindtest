@@ -61,6 +61,8 @@ function sanitizeSettings(input: Partial<RoomSettings>): RoomSettings {
     return provided && provided.length > 0 ? provided.slice(0, 20) : `Équipe ${index + 1}`;
   });
   const hostPlays = mode === 'solo' || input.hostPlays === true;
+  const requestedHostAudio = input.audioHostEnabled !== false;
+  const audioPlayersEnabled = input.audioPlayersEnabled === true;
   return {
     themes: themes.length > 0 ? themes.slice(0, 8) : ['top'],
     difficulty,
@@ -70,6 +72,8 @@ function sanitizeSettings(input: Partial<RoomSettings>): RoomSettings {
     teamCount,
     teamNames: sanitizedNames,
     hostPlays,
+    audioHostEnabled: requestedHostAudio || !audioPlayersEnabled,
+    audioPlayersEnabled,
   };
 }
 
@@ -115,13 +119,14 @@ io.on('connection', (socket) => {
     socket.join(target.code);
     ack({ ok: true, playerId });
     target.broadcast();
-    if (rejoining?.isHost) target.resyncHost();
+    if (rejoining) target.resyncPlayer(playerId, socket.id);
   });
 
   socket.on('update_settings', (settings) => {
     const current = room();
     if (!current || !isHost() || current.phase !== 'lobby') return;
     current.settings = sanitizeSettings({ ...current.settings, ...settings });
+    current.resizeTeamScores();
     current.broadcast();
   });
 
@@ -172,7 +177,20 @@ io.on('connection', (socket) => {
   });
 
   socket.on('preview_failed', () => {
-    if (isHost()) void room()?.retryPreview();
+    const current = room();
+    if (!current) return;
+    if (isHost()) {
+      void current.retryPreview();
+      return;
+    }
+    const member = playerId ? current.players.get(playerId) : undefined;
+    const playerCanRetry =
+      member &&
+      !member.isHost &&
+      current.settings.audioPlayersEnabled &&
+      !current.settings.audioHostEnabled &&
+      ['countdown', 'listening', 'buzzed'].includes(current.phase);
+    if (playerCanRetry) void current.retryPreview();
   });
 
   socket.on('resync', () => {

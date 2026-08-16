@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { HostTrack, RoomSettings, RoomState } from '../../shared/types';
+import type { HostTrack, PlayerTrack, RoomSettings, RoomState } from '../../shared/types';
 import { socket } from './socket';
 import { clearSession, loadSession, saveSession } from './storage';
 import Home from './views/Home';
@@ -23,6 +23,7 @@ const isAutoplayBlocked = (reason: unknown): boolean =>
 export default function App() {
   const [state, setState] = useState<RoomState | null>(null);
   const [track, setTrack] = useState<HostTrack | null>(null);
+  const [playerTrack, setPlayerTrack] = useState<PlayerTrack | null>(null);
   const [playerId, setPlayerId] = useState<string | null>(null);
   const [isHost, setIsHost] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -68,6 +69,7 @@ export default function App() {
   useEffect(() => {
     const onState = (next: RoomState) => setState(next);
     const onTrack = (next: HostTrack) => setTrack(next);
+    const onPlayerTrack = (next: PlayerTrack) => setPlayerTrack(next);
     const onError = (message: string) => setError(message);
     const onAudio = ({ action }: { action: 'play' | 'pause' | 'stop' }) => {
       const audio = audioRef.current;
@@ -78,6 +80,7 @@ export default function App() {
 
     socket.on('room_state', onState);
     socket.on('host_track', onTrack);
+    socket.on('player_track', onPlayerTrack);
     socket.on('error_message', onError);
     socket.on('room_closed', () => {
       // Show modal to inform users the room was closed; they can return to home.
@@ -88,6 +91,7 @@ export default function App() {
     return () => {
       socket.off('room_state', onState);
       socket.off('host_track', onTrack);
+      socket.off('player_track', onPlayerTrack);
       socket.off('error_message', onError);
       socket.off('room_closed');
       socket.off('audio', onAudio);
@@ -117,18 +121,19 @@ export default function App() {
 
   useEffect(() => {
     const audio = audioRef.current;
-    if (!audio || !track) return;
-    if (audio.getAttribute('src') === track.previewUrl) return;
+    const audioTrack = isHost ? track : playerTrack;
+    if (!audio || !audioTrack) return;
+    if (audio.getAttribute('src') === audioTrack.previewUrl) return;
 
     const seek = () => {
-      audio.currentTime = track.startAt;
+      audio.currentTime = audioTrack.startAt;
     };
     audio.addEventListener('loadedmetadata', seek, { once: true });
-    audio.src = track.previewUrl;
+    audio.src = audioTrack.previewUrl;
     audio.load();
     if (audio.readyState >= HTMLMediaElement.HAVE_METADATA) seek();
     return () => audio.removeEventListener('loadedmetadata', seek);
-  }, [track]);
+  }, [isHost, playerTrack, track]);
 
   const lastResyncRound = useRef<number | null>(null);
   useEffect(() => {
@@ -155,6 +160,8 @@ export default function App() {
       mode: 'phones',
       teamCount: 2,
       teamNames: ['Équipe 1', 'Équipe 2'],
+      audioHostEnabled: true,
+      audioPlayersEnabled: false,
     };
     socket.emit('create_room', settings, (res) => {
       if (!res.ok) {
@@ -186,6 +193,7 @@ export default function App() {
   }
 
   const hostPlaying = isHost && (state.settings.mode === 'solo' || (state.settings.mode === 'teams' && state.settings.hostPlays));
+  const shouldPlayAudio = isHost ? state.settings.audioHostEnabled : state.settings.audioPlayersEnabled;
   const hostMember = state.players.find((player) => player.id === playerId);
   const hostCanBuzz = hostPlaying && state.phase === 'listening' && !hostMember?.lockedOut;
 
@@ -218,8 +226,13 @@ export default function App() {
           Accueil
         </button>
       </div>
-      {/* Only the host device outputs sound; players just buzz. */}
-      {isHost && <audio ref={audioRef} preload="auto" onError={() => socket.emit('preview_failed')} />}
+      {shouldPlayAudio && (
+        <audio
+          ref={audioRef}
+          preload="auto"
+          onError={() => socket.emit('preview_failed')}
+        />
+      )}
 
       {error && (
         <p className="mx-auto mt-4 max-w-lg rounded-xl bg-red-500/20 px-4 py-2 text-center text-red-200">
@@ -227,7 +240,7 @@ export default function App() {
         </p>
       )}
 
-      {isHost && autoplayBlocked && (
+      {shouldPlayAudio && autoplayBlocked && (
         <div className="mx-auto mt-4 max-w-lg px-4">
           <button className="btn-primary w-full" onClick={playAudio}>
             Reprendre le son
