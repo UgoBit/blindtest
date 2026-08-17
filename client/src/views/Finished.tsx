@@ -10,6 +10,7 @@ export default function Finished({
   isHost: boolean;
   onRestart: () => void;
 }) {
+  const scoring = state.settings.buzzerEnabled;
   const teamMode = state.settings.mode === 'teams';
   const best = Math.max(0, ...(teamMode ? state.teamScores.map((team) => team.score) : state.players.map((p) => p.score)));
   const leaders = teamMode
@@ -23,7 +24,9 @@ export default function Finished({
   return (
     <div className="mx-auto flex max-w-lg flex-col gap-6 px-4 py-12 text-center">
       <h2 className="text-4xl font-black">Partie terminée</h2>
-      {winner ? (
+      {!scoring ? (
+        <p className="text-xl text-white/70">Tous les extraits sont passés.</p>
+      ) : winner ? (
         <p className="text-2xl">
           🏆 <span className="font-bold text-neon">{winner.name}</span> gagne avec {winner.score} pts
         </p>
@@ -35,15 +38,17 @@ export default function Finished({
             : ` entre ${names.slice(0, -1).join(', ')} et ${names[names.length - 1]} avec ${best} pts`}
         </p>
       )}
-      <div className="card text-left">
-        <Scores
-          players={state.players}
-          teams={state.teamScores}
-          mode={state.settings.mode}
-          highlight={winningPlayer?.id}
-          highlightTeam={winningTeam?.team}
-        />
-      </div>
+      {scoring && (
+        <div className="card text-left">
+          <Scores
+            players={state.players}
+            teams={state.teamScores}
+            mode={state.settings.mode}
+            highlight={winningPlayer?.id}
+            highlightTeam={winningTeam?.team}
+          />
+        </div>
+      )}
       {isHost && (
         <button className="btn-primary" onClick={onRestart}>
           Rejouer

@@ -54,7 +54,8 @@ function sanitizeSettings(input: Partial<RoomSettings>): RoomSettings {
   const difficulty: Difficulty = DIFFICULTIES.some((d) => d.id === input.difficulty)
     ? (input.difficulty as Difficulty)
     : 'mixte';
-  const mode = input.mode === 'solo' ? 'solo' : input.mode === 'teams' ? 'teams' : 'phones';
+  const mode: RoomSettings['mode'] =
+    input.mode === 'solo' || input.mode === 'teams' || input.mode === 'course' ? input.mode : 'phones';
   const teamCount = Math.min(8, Math.max(2, Math.round(input.teamCount ?? 2)));
   const sanitizedNames = Array.from({ length: teamCount }, (_, index) => {
     const provided = input.teamNames?.[index]?.trim();
@@ -74,6 +75,8 @@ function sanitizeSettings(input: Partial<RoomSettings>): RoomSettings {
     hostPlays,
     audioHostEnabled: requestedHostAudio || !audioPlayersEnabled,
     audioPlayersEnabled,
+    // Playing without a buzzer only makes sense when a single screen listens.
+    buzzerEnabled: mode === 'solo' ? input.buzzerEnabled !== false : true,
   };
 }
 
@@ -156,8 +159,8 @@ io.on('connection', (socket) => {
     if (playerId) room()?.submitAnswer(playerId, { title, artist });
   });
 
-  socket.on('correct_answer', (field) => {
-    if (isHost()) room()?.correctAnswer(field);
+  socket.on('correct_answer', ({ field, playerId: target }) => {
+    if (isHost()) room()?.correctAnswer(field, target);
   });
 
   socket.on('skip', () => {

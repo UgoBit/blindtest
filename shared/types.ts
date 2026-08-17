@@ -7,7 +7,7 @@ export interface Theme {
   category: 'genre' | 'epoque' | 'culture';
 }
 
-export type GameMode = 'phones' | 'solo' | 'teams';
+export type GameMode = 'phones' | 'solo' | 'teams' | 'course';
 
 export interface Player {
   id: string;
@@ -63,6 +63,8 @@ export interface RoomSettings {
   teamNames: string[];
   audioHostEnabled: boolean;
   audioPlayersEnabled: boolean;
+  /** Solo only: when false the round just plays and reveals, without buzzer nor score. */
+  buzzerEnabled: boolean;
 }
 
 export interface RoomState {
@@ -81,8 +83,26 @@ export interface RoomState {
   submittedAnswer: { title: string; artist: string } | null;
   /** Accepted fields for the submitted answer, revealed only with the answer. */
   answerVerdict: { title: boolean; artist: boolean } | null;
-  /** Deadline for the buzzer's answer, while the room is in `buzzed`. */
+  /** Deadline for the buzzer's answer, or end of the clip in `course` mode. */
   responseDeadline: number | null;
+  /** Course mode: players who buzzed and are still typing their answer. */
+  racers: string[];
+  /** Course mode: players who already sent an answer this round. */
+  answeredBy: string[];
+  /** Course mode: every answer of the round, revealed only with the answer. */
+  raceAnswers: RaceAnswer[];
+}
+
+/** One answer sent during a `course` round, revealed at the end of the round. */
+export interface RaceAnswer {
+  playerId: string;
+  name: string;
+  title: string;
+  artist: string;
+  verdict: { title: boolean; artist: boolean };
+  points: number;
+  /** Seconds elapsed in the clip when the player buzzed. */
+  seconds: number;
 }
 
 export interface TeamScore {
@@ -117,7 +137,7 @@ export interface ClientToServerEvents {
   start_game: () => void;
   buzz: () => void;
   submit_answer: (payload: { title: string; artist: string }) => void;
-  correct_answer: (field: 'title' | 'artist') => void;
+  correct_answer: (payload: { field: 'title' | 'artist'; playerId?: string }) => void;
   skip: () => void;
   next_round: () => void;
   restart: () => void;
@@ -128,3 +148,15 @@ export interface ClientToServerEvents {
 }
 
 export const POINTS = { title: 1, artist: 1 } as const;
+
+/** Course mode: points for a full answer, depending on how fast the player buzzed. */
+export const SPEED_TIERS = [
+  { seconds: 10, points: 3 },
+  { seconds: 20, points: 2 },
+] as const;
+
+export const SPEED_TIER_FLOOR = 1;
+
+export function speedPoints(seconds: number): number {
+  return SPEED_TIERS.find((tier) => seconds < tier.seconds)?.points ?? SPEED_TIER_FLOOR;
+}

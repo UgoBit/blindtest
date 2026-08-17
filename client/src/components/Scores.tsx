@@ -1,9 +1,9 @@
-import type { Player, TeamScore } from '../../../shared/types';
+import type { GameMode, Player, TeamScore } from '../../../shared/types';
 
 interface Props {
   players: Player[];
   teams?: TeamScore[];
-  mode?: 'phones' | 'solo' | 'teams';
+  mode?: GameMode;
   highlight?: string | null;
   highlightTeam?: number | null;
 }

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { RoomState } from '../../../shared/types';
 import Scores from '../components/Scores';
+import AnswerForm from '../components/AnswerForm';
 
 interface Props {
   state: RoomState;
@@ -19,8 +20,13 @@ export default function PlayerGame({ state, playerId, onBuzz, onSubmitAnswer }: 
     ? state.teamScores.find((team) => team.team === me.team)?.score ?? 0
     : 0;
   const displayedScore = state.settings.mode === 'teams' ? currentTeamScore : me?.score ?? 0;
-  const iBuzzed = state.buzzedBy === playerId;
-  const canBuzz = state.phase === 'listening' && !me?.lockedOut;
+  const isCourse = state.settings.mode === 'course';
+  const iRace = state.racers.includes(playerId);
+  const iAnswered = state.answeredBy.includes(playerId);
+  const iBuzzed = state.buzzedBy === playerId || iRace;
+  const canBuzz = state.phase === 'listening' && !me?.lockedOut && !iRace && !iAnswered;
+  const canSubmit = state.phase === 'buzzed' ? state.buzzedBy === playerId : iRace;
+  const myRace = state.raceAnswers.find((race) => race.playerId === playerId) ?? null;
   const [flash, setFlash] = useState(false);
   const [coverFailed, setCoverFailed] = useState(false);
   const previousPhase = useRef(state.phase);
@@ -31,7 +37,7 @@ export default function PlayerGame({ state, playerId, onBuzz, onSubmitAnswer }: 
   const [remainingResponseSeconds, setRemainingResponseSeconds] = useState(0);
 
   useEffect(() => {
-    if (!iBuzzed || state.phase !== 'buzzed' || !state.responseDeadline) {
+    if (!canSubmit || !state.responseDeadline) {
       setRemainingResponseSeconds(0);
       return;
     }
@@ -39,14 +45,14 @@ export default function PlayerGame({ state, playerId, onBuzz, onSubmitAnswer }: 
     update();
     const timer = window.setInterval(update, 250);
     return () => window.clearInterval(timer);
-  }, [iBuzzed, state.phase, state.responseDeadline]);
+  }, [canSubmit, state.responseDeadline]);
 
   useEffect(() => {
-    if (state.phase !== 'buzzed') {
+    if (!canSubmit) {
       setAnswerTitle('');
       setAnswerArtist('');
     }
-  }, [state.phase]);
+  }, [canSubmit]);
 
   useEffect(() => {
     if (!iBuzzed) return;
@@ -122,7 +128,14 @@ export default function PlayerGame({ state, playerId, onBuzz, onSubmitAnswer }: 
         {state.phase === 'reveal' && <span className="absolute inset-0 bg-black/55" />}
         <span className="relative z-10 flex h-full flex-col items-center justify-center gap-3 px-8 text-center">
           {state.phase === 'countdown' && 'Prêt…'}
-          {state.phase === 'listening' && (me?.lockedOut ? 'Éliminé' : 'BUZZ')}
+          {state.phase === 'listening' &&
+            (me?.lockedOut
+              ? 'Éliminé'
+              : iAnswered
+                ? 'Envoyé ✓'
+                : iRace
+                  ? 'À toi !'
+                  : 'BUZZ')}
           {state.phase === 'buzzed' && (
             <>
               {iBuzzed ? (
@@ -160,43 +173,31 @@ export default function PlayerGame({ state, playerId, onBuzz, onSubmitAnswer }: 
         </span>
       </button>
 
-      {state.phase === 'buzzed' && iBuzzed && (
-        <form
-          className="card space-y-3"
-          onSubmit={(event) => {
-            event.preventDefault();
-            onSubmitAnswer({ title: answerTitle, artist: answerArtist });
-          }}
-        >
-          <div>
-            <h2 className="text-lg font-bold">Ta réponse</h2>
-            <p className="mt-1 text-sm text-white/60">
-              Un seul champ suffit · {remainingResponseSeconds}s restantes
-            </p>
-          </div>
-          <label className="block text-left">
-            <span className="text-sm text-white/60">Titre</span>
-            <input
-              autoFocus
-              value={answerTitle}
-              onChange={(event) => setAnswerTitle(event.target.value)}
-              className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-white outline-none focus:border-neon"
-              maxLength={120}
-            />
-          </label>
-          <label className="block text-left">
-            <span className="text-sm text-white/60">Artiste</span>
-            <input
-              value={answerArtist}
-              onChange={(event) => setAnswerArtist(event.target.value)}
-              className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-white outline-none focus:border-neon"
-              maxLength={120}
-            />
-          </label>
-          <button type="submit" className="btn-primary w-full">
-            Valider ma réponse
-          </button>
-        </form>
+      {canSubmit && (
+        <AnswerForm
+          className="card space-y-3 text-left"
+          hint={`Un seul champ suffit · ${remainingResponseSeconds}s restantes`}
+          title={answerTitle}
+          artist={answerArtist}
+          onTitle={setAnswerTitle}
+          onArtist={setAnswerArtist}
+          onSubmit={() => onSubmitAnswer({ title: answerTitle, artist: answerArtist })}
+        />
+      )}
+
+      {isCourse && state.phase === 'reveal' && myRace && (
+        <section className="card text-left text-sm">
+          <h3 className="font-bold">Ta réponse</h3>
+          <p className="mt-2 text-white/70">
+            Titre : {myRace.title || 'non renseigné'} {myRace.title && (myRace.verdict.title ? '✓' : '✗')}
+          </p>
+          <p className="text-white/70">
+            Artiste : {myRace.artist || 'non renseigné'} {myRace.artist && (myRace.verdict.artist ? '✓' : '✗')}
+          </p>
+          <p className="mt-2 font-semibold text-accent">
+            Buzz à {myRace.seconds}s · {myRace.points} pt{myRace.points > 1 ? 's' : ''}
+          </p>
+        </section>
       )}
 
       <section className="card">
