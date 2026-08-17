@@ -44,7 +44,7 @@ export default function App() {
 
       const hostPlayer = state?.players.find((player) => player.id === playerId);
       const hostMode = state?.settings.mode === 'solo' || state?.settings.hostPlays;
-      if (!isHost || !hostMode) return;
+      if (!isHost || !hostMode || !state.settings.buzzerEnabled) return;
       event.preventDefault();
       if (state.phase === 'listening' && !hostPlayer?.lockedOut) socket.emit('buzz');
     };
@@ -162,6 +162,7 @@ export default function App() {
       teamNames: ['Équipe 1', 'Équipe 2'],
       audioHostEnabled: true,
       audioPlayersEnabled: false,
+      buzzerEnabled: true,
     };
     socket.emit('create_room', settings, (res) => {
       if (!res.ok) {
@@ -192,10 +193,17 @@ export default function App() {
     return <Home initialCode={codeFromUrl()} error={error} onCreate={createRoom} onJoin={joinRoom} />;
   }
 
-  const hostPlaying = isHost && (state.settings.mode === 'solo' || (state.settings.mode === 'teams' && state.settings.hostPlays));
+  const hostPlaying =
+    isHost &&
+    state.settings.buzzerEnabled &&
+    (state.settings.mode === 'solo' ||
+      ((state.settings.mode === 'teams' || state.settings.mode === 'course') && state.settings.hostPlays));
   const shouldPlayAudio = isHost ? state.settings.audioHostEnabled : state.settings.audioPlayersEnabled;
   const hostMember = state.players.find((player) => player.id === playerId);
-  const hostCanBuzz = hostPlaying && state.phase === 'listening' && !hostMember?.lockedOut;
+  const hostRacing = state.racers.includes(playerId);
+  const hostAnswered = state.answeredBy.includes(playerId);
+  const hostCanBuzz =
+    hostPlaying && state.phase === 'listening' && !hostMember?.lockedOut && !hostRacing && !hostAnswered;
 
   return (
     <>
@@ -266,8 +274,8 @@ export default function App() {
           <>
             <HostGame
               state={state}
-              onCorrectAnswer={(field) => socket.emit('correct_answer', field)}
-              canSubmitAnswer={state.buzzedBy === playerId}
+              onCorrectAnswer={(field, target) => socket.emit('correct_answer', { field, playerId: target })}
+              canSubmitAnswer={state.buzzedBy === playerId || hostRacing}
               onSubmitAnswer={(answer) => socket.emit('submit_answer', answer)}
               onSkip={() => socket.emit('skip')}
               onNext={() => socket.emit('next_round')}
@@ -290,8 +298,16 @@ export default function App() {
                   disabled={!hostCanBuzz}
                   onClick={() => socket.emit('buzz')}
                 >
-                  <span>{hostMember?.lockedOut ? 'Éliminé' : 'BUZZ'}</span>
-                  {!hostMember?.lockedOut && <span className="text-sm font-medium tracking-normal text-white/70">Espace</span>}
+                  <span>
+                    {hostMember?.lockedOut
+                      ? 'Éliminé'
+                      : hostAnswered
+                        ? 'Réponse envoyée'
+                        : hostRacing
+                          ? 'À toi !'
+                          : 'BUZZ'}
+                  </span>
+                  {hostCanBuzz && <span className="text-sm font-medium tracking-normal text-white/70">Espace</span>}
                 </button>
               </div>
             )}

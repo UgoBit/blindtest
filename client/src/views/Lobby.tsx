@@ -59,7 +59,13 @@ export default function Lobby({
   const teamBuzzers = guests.length + (settings.hostPlays ? 1 : 0);
   const canStart =
     settings.themes.length > 0 &&
-    (mode === 'solo' ? true : mode === 'teams' ? teamBuzzers > 0 && populatedTeams >= 2 : guests.length > 0);
+    (mode === 'solo'
+      ? true
+      : mode === 'teams'
+        ? teamBuzzers > 0 && populatedTeams >= 2
+        : mode === 'course'
+          ? teamBuzzers > 0
+          : guests.length > 0);
 
   useEffect(() => {
     if (host?.name) setTeamName(host.name);
@@ -274,26 +280,55 @@ export default function Lobby({
 
         <section className="card">
           <h2 className="text-xl font-bold">Format</h2>
-          <div className="mt-3 grid gap-2 sm:grid-cols-3">
+          <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
             {[
-              { id: 'phones' as const, label: 'Téléphones', action: () => onUpdate({ mode: 'phones', hostPlays: false }) },
-              { id: 'solo' as const, label: 'Solo', action: () => onUpdate({ mode: 'solo', hostPlays: true }) },
-              { id: 'teams' as const, label: 'Équipes', action: () => onUpdate({ mode: 'teams', hostPlays: false, teamCount: teamCount }) },
+              {
+                id: 'phones' as const,
+                label: 'Téléphones',
+                hint: 'un seul buzz par manche',
+                action: () => onUpdate({ mode: 'phones', hostPlays: false }),
+              },
+              {
+                id: 'solo' as const,
+                label: 'Solo',
+                hint: 'sur cet écran uniquement',
+                action: () => onUpdate({ mode: 'solo', hostPlays: true }),
+              },
+              {
+                id: 'teams' as const,
+                label: 'Équipes',
+                hint: 'score commun par équipe',
+                action: () => onUpdate({ mode: 'teams', hostPlays: false, teamCount: teamCount }),
+              },
+              {
+                id: 'course' as const,
+                label: 'Course',
+                hint: 'tout le monde buzze, la musique continue',
+                action: () => onUpdate({ mode: 'course', hostPlays: false }),
+              },
             ].map((format) => (
               <button
                 key={format.id}
                 type="button"
                 onClick={format.action}
-                className={`rounded-xl border px-3 py-3 text-sm transition ${
+                className={`rounded-xl border px-3 py-3 text-left text-sm transition ${
                   mode === format.id
                     ? 'border-neon bg-neon/20 text-white'
                     : 'border-white/10 bg-white/5 text-white/70 hover:bg-white/10'
                 }`}
               >
-                {format.label}
+                <span className="block font-semibold">{format.label}</span>
+                <span className="mt-1 block text-xs text-white/55">{format.hint}</span>
               </button>
             ))}
           </div>
+          {mode === 'course' && (
+            <p className="mt-3 text-sm text-white/60">
+              Chacun peut buzzer quand il veut : plus tu buzzes tôt, plus la réponse complète rapporte (3 pts
+              avant 10s, 2 pts avant 20s, 1 pt ensuite). Une réponse partielle vaut 1 pt, une fausse t’élimine
+              pour la manche.
+            </p>
+          )}
           {isHost && (
             <div className="mt-5 border-t border-white/10 pt-4">
               <h3 className="font-semibold">Sortie du son</h3>
@@ -330,10 +365,39 @@ export default function Lobby({
           )}
         </section>
 
-        {(mode === 'solo' || mode === 'teams') && (
+        {(mode === 'solo' || mode === 'teams' || mode === 'course') && (
           <section className="card">
             <h2 className="text-xl font-bold">Réglages du format</h2>
-            {mode === 'teams' && (
+            {mode === 'solo' && (
+              <div className="mt-4">
+                <span className="text-sm text-white/60">Buzzer</span>
+                <div className="mt-2 grid max-w-md grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => onUpdate({ buzzerEnabled: true })}
+                    className={`rounded-xl border px-3 py-2 text-left text-sm ${
+                      settings.buzzerEnabled ? 'border-neon bg-neon/20' : 'border-white/10 bg-white/5 text-white/70'
+                    }`}
+                  >
+                    <span className="block font-semibold">Avec buzzer</span>
+                    <span className="mt-1 block text-xs text-white/55">On buzze et on tape la réponse.</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onUpdate({ buzzerEnabled: false })}
+                    className={`rounded-xl border px-3 py-2 text-left text-sm ${
+                      !settings.buzzerEnabled ? 'border-neon bg-neon/20' : 'border-white/10 bg-white/5 text-white/70'
+                    }`}
+                  >
+                    <span className="block font-semibold">Sans buzzer</span>
+                    <span className="mt-1 block text-xs text-white/55">
+                      Les extraits passent, on crie à voix haute, pas de score.
+                    </span>
+                  </button>
+                </div>
+              </div>
+            )}
+            {(mode === 'teams' || mode === 'course') && (
               <div className="mt-4">
                 <span className="text-sm text-white/60">Rôle de l’hôte</span>
                 <div className="mt-2 grid max-w-sm grid-cols-2 gap-2">
@@ -359,7 +423,9 @@ export default function Lobby({
               </div>
             )}
             <label className="mt-4 block max-w-md">
-              <span className="text-sm text-white/60">{mode === 'solo' ? 'Nom de l’équipe' : 'Pseudo de l’hôte'}</span>
+              <span className="text-sm text-white/60">
+                {mode === 'solo' ? 'Nom de l’équipe' : 'Pseudo de l’hôte'}
+              </span>
               <input
                 type="text"
                 maxLength={16}

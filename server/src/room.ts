@@ -3,11 +3,12 @@ import type {
   ClientToServerEvents,
   Phase,
   Player,
+  RaceAnswer,
   RoomSettings,
   RoomState,
   ServerToClientEvents,
 } from '../../shared/types.js';
-import { POINTS } from '../../shared/types.js';
+import { POINTS, speedPoints } from '../../shared/types.js';
 import { answerMatches, buildPlaylist, itunesPreview, type Track } from './music.js';
 
 type Io = Server<ClientToServerEvents, ServerToClientEvents>;
@@ -55,6 +56,10 @@ export class Room {
   private answerVerdict: { title: boolean; artist: boolean } | null = null;
   private submittedBy: string | null = null;
   private responseDeadline: number | null = null;
+  /** Course mode: player id -> seconds elapsed in the clip when they buzzed. */
+  private racers = new Map<string, number>();
+  private raceAnswers: RaceAnswer[] = [];
+  private raceScoresApplied = false;
 
   constructor(io: Io, settings: RoomSettings) {
     this.io = io;
@@ -150,6 +155,7 @@ export class Room {
   kick(playerId: string): void {
     if (playerId === this.hostId) return;
     this.players.delete(playerId);
+    this.racers.delete(playerId);
     if (this.buzzedBy === playerId) this.resumeAfterMissingBuzzer();
     this.broadcast();
   }
@@ -173,9 +179,23 @@ export class Room {
     this.broadcast();
   }
 
+  private get isCourse(): boolean {
+    return this.settings.mode === 'course';
+  }
+
+  /** Solo listening mode: the clip just plays and reveals, nobody buzzes. */
+  private get buzzerDisabled(): boolean {
+    return this.settings.mode === 'solo' && !this.settings.buzzerEnabled;
+  }
+
   canBuzz(playerId: string): boolean {
     const member = this.players.get(playerId);
-    if (!member || member.lockedOut) return false;
+    if (!member || member.lockedOut || this.buzzerDisabled) return false;
+    if (this.isCourse) {
+      if (this.racers.has(playerId)) return false;
+      if (this.raceAnswers.some((answer) => answer.playerId === playerId)) return false;
+      return member.isHost ? this.settings.hostPlays : true;
+    }
     if (this.settings.mode === 'solo') return member.isHost;
     if (this.settings.mode === 'teams') return member.isHost ? this.settings.hostPlays : true;
     return !member.isHost;
@@ -209,7 +229,15 @@ export class Room {
         : [],
       submittedAnswer: this.phase === 'reveal' ? this.submittedAnswer : null,
       answerVerdict: this.phase === 'reveal' ? this.answerVerdict : null,
-      responseDeadline: this.phase === 'buzzed' ? this.responseDeadline : null,
+      responseDeadline:
+        this.phase === 'buzzed'
+          ? this.responseDeadline
+          : this.isCourse && this.phase === 'listening'
+            ? this.clipEndsAt
+            : null,
+      racers: this.isCourse ? [...this.racers.keys()] : [],
+      answeredBy: this.isCourse ? this.raceAnswers.map((answer) => answer.playerId) : [],
+      raceAnswers: this.isCourse && this.phase === 'reveal' ? this.raceAnswers : [],
     };
   }
 
@@ -331,6 +359,9 @@ export class Room {
     this.submittedAnswer = null;
     this.answerVerdict = null;
     this.submittedBy = null;
+    this.racers.clear();
+    this.raceAnswers = [];
+    this.raceScoresApplied = false;
     for (const member of this.players.values()) member.lockedOut = false;
 
     if (this.round + 1 >= this.playlist.length) {
@@ -362,6 +393,13 @@ export class Room {
 
   buzz(playerId: string): void {
     if (this.phase !== 'listening' || !this.canBuzz(playerId)) return;
+    // Course mode: the clip keeps playing and everybody can still buzz.
+    if (this.isCourse) {
+      this.racers.set(playerId, this.elapsedSeconds());
+      this.touch();
+      this.broadcast();
+      return;
+    }
     this.clearTimer();
     this.remainingMs = Math.max(2000, this.clipEndsAt - Date.now());
     this.buzzedBy = playerId;
@@ -379,7 +417,75 @@ export class Room {
     this.broadcast();
   }
 
+  private cleanAnswer(answer: { title: string; artist: string }): { title: string; artist: string } {
+    return {
+      title: answer.title.trim().slice(0, 120),
+      artist: answer.artist.trim().slice(0, 120),
+    };
+  }
+
+  private judgeAnswer(answer: { title: string; artist: string }): { title: boolean; artist: boolean } {
+    return {
+      title: !!answer.title && answerMatches(answer.title, this.currentTrack?.title ?? '', 'title'),
+      artist: !!answer.artist && answerMatches(answer.artist, this.currentTrack?.artist ?? '', 'artist'),
+    };
+  }
+
+  private raceAnswerPoints(answer: RaceAnswer): number {
+    if (answer.verdict.title && answer.verdict.artist) return speedPoints(answer.seconds);
+    return answer.verdict.title || answer.verdict.artist ? POINTS.title : 0;
+  }
+
+  /** Course mode: scores stay hidden until the reveal so nobody learns a buzz was right. */
+  private applyRaceScores(): void {
+    if (this.raceScoresApplied) return;
+    this.raceScoresApplied = true;
+    for (const answer of this.raceAnswers) {
+      const member = this.players.get(answer.playerId);
+      if (member) member.score += answer.points;
+    }
+  }
+
+  private submitRaceAnswer(playerId: string, answer: { title: string; artist: string }): void {
+    if (this.phase !== 'listening') return;
+    const seconds = this.racers.get(playerId);
+    if (seconds === undefined) return;
+    this.racers.delete(playerId);
+    const member = this.players.get(playerId);
+    if (!member) return;
+
+    const clean = this.cleanAnswer(answer);
+    const verdict = this.judgeAnswer(clean);
+    const entry: RaceAnswer = {
+      playerId,
+      name: member.name,
+      ...clean,
+      verdict,
+      points: 0,
+      // Floored so a buzz at 9.9s still counts inside the first ten seconds.
+      seconds: Math.floor(seconds),
+    };
+    entry.points = this.raceAnswerPoints(entry);
+    this.raceAnswers.push(entry);
+    // A wrong answer costs the rest of the round, a right one ends it for that player too.
+    if (entry.points === 0) member.lockedOut = true;
+    this.touch();
+
+    const someoneLeft = [...this.players.values()].some(
+      (player) => this.racers.has(player.id) || this.canBuzz(player.id),
+    );
+    if (!someoneLeft) {
+      this.reveal();
+      return;
+    }
+    this.broadcast();
+  }
+
   submitAnswer(playerId: string, answer: { title: string; artist: string }): void {
+    if (this.isCourse) {
+      this.submitRaceAnswer(playerId, answer);
+      return;
+    }
     if (this.phase !== 'buzzed') return;
     if (!this.buzzedBy) {
       this.resumeAfterMissingBuzzer();
@@ -392,18 +498,8 @@ export class Room {
       return;
     }
     this.clearResponseTimer();
-    this.submittedAnswer = {
-      title: answer.title.trim().slice(0, 120),
-      artist: answer.artist.trim().slice(0, 120),
-    };
-    this.answerVerdict = {
-      title:
-        !!this.submittedAnswer.title &&
-        answerMatches(this.submittedAnswer.title, this.currentTrack?.title ?? '', 'title'),
-      artist:
-        !!this.submittedAnswer.artist &&
-        answerMatches(this.submittedAnswer.artist, this.currentTrack?.artist ?? '', 'artist'),
-    };
+    this.submittedAnswer = this.cleanAnswer(answer);
+    this.answerVerdict = this.judgeAnswer(this.submittedAnswer);
 
     if (this.answerVerdict.title && !this.awarded.title) {
       member.score += POINTS.title;
@@ -441,8 +537,27 @@ export class Room {
     this.emitAudio('play');
   }
 
-  correctAnswer(field: 'title' | 'artist'): void {
-    if (this.phase !== 'reveal' || !this.submittedBy || !this.submittedAnswer || !this.answerVerdict) return;
+  /** Course mode: the host accepts a field the matcher refused, for one player. */
+  private correctRaceAnswer(field: 'title' | 'artist', playerId: string): void {
+    const entry = this.raceAnswers.find((answer) => answer.playerId === playerId);
+    if (!entry || entry.verdict[field] || !entry[field]) return;
+    const member = this.players.get(playerId);
+    if (!member) return;
+    entry.verdict[field] = true;
+    const points = this.raceAnswerPoints(entry);
+    member.score += points - entry.points;
+    entry.points = points;
+    if (member.lockedOut && points > 0) member.lockedOut = false;
+    this.broadcast();
+  }
+
+  correctAnswer(field: 'title' | 'artist', playerId?: string): void {
+    if (this.phase !== 'reveal') return;
+    if (this.isCourse) {
+      if (playerId) this.correctRaceAnswer(field, playerId);
+      return;
+    }
+    if (!this.submittedBy || !this.submittedAnswer || !this.answerVerdict) return;
     if (this.awarded[field] || !this.submittedAnswer[field]) return;
     const member = this.players.get(this.submittedBy);
     if (!member) return;
@@ -458,6 +573,10 @@ export class Room {
     this.clearResponseTimer();
     this.phase = 'reveal';
     this.buzzedBy = null;
+    if (this.isCourse) {
+      this.racers.clear();
+      this.applyRaceScores();
+    }
     this.touch();
     this.emitAudio('pause');
     this.broadcast();
@@ -473,6 +592,9 @@ export class Room {
     this.submittedAnswer = null;
     this.answerVerdict = null;
     this.submittedBy = null;
+    this.racers.clear();
+    this.raceAnswers = [];
+    this.raceScoresApplied = false;
     for (const member of this.players.values()) {
       member.score = 0;
       member.lockedOut = false;
