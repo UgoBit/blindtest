@@ -91,6 +91,8 @@ export interface RoomState {
   answeredBy: string[];
   /** Course mode: every answer of the round, revealed only with the answer. */
   raceAnswers: RaceAnswer[];
+  /** Remaining seconds on the current clip (0 when not playing). */
+  remainingSeconds: number;
 }
 
 /** One answer sent during a `course` round, revealed at the end of the round. */

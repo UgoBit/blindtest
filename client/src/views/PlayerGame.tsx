@@ -86,6 +86,8 @@ export default function PlayerGame({ state, playerId, onBuzz, onSubmitAnswer }: 
             : 'buzzer-settled';
   const hasCover = state.phase === 'reveal' && state.answer?.cover && !coverFailed;
   const buzzerInitial = buzzer?.name.trim().charAt(0).toUpperCase();
+  const clipTotal = state.settings.clipSeconds ?? 30;
+  const pct = Math.max(0, Math.min(100, (state.remainingSeconds / clipTotal) * 100));
 
   return (
     <div className="mx-auto flex min-h-screen max-w-md flex-col gap-6 px-4 py-8">
@@ -103,6 +105,16 @@ export default function PlayerGame({ state, playerId, onBuzz, onSubmitAnswer }: 
           flash ? 'ring-8 ring-white' : ''
         }`}
       >
+        {(state.phase === 'listening' || state.phase === 'buzzed') && (
+          <span
+            aria-hidden
+            className="absolute inset-0 rounded-full"
+            style={{
+              zIndex: 0,
+              background: `conic-gradient(rgba(124,92,255,0.85) ${pct}%, rgba(255,255,255,0.04) 0%)`,
+            }}
+          />
+        )}
         {state.phase !== 'reveal' && (
           <>
             <span aria-hidden className="buzzer-ring buzzer-ring-one" />

@@ -203,6 +203,7 @@ export class Room {
 
   state(): RoomState {
     const track = this.currentTrack;
+      const remainingSeconds = Math.max(0, Math.ceil(this.settings.clipSeconds - this.elapsedSeconds()));
     return {
       code: this.code,
       phase: this.phase,
@@ -224,6 +225,7 @@ export class Room {
           : null,
       track: track ? { index: this.round + 1, total: this.playlist.length, cover: null } : null,
       round: this.round,
+        remainingSeconds,
       teamScores: this.settings.mode === 'teams'
         ? this.teamScores.map((score, index) => ({ team: index + 1, name: this.settings.teamNames[index] ?? `Équipe ${index + 1}`, score }))
         : [],
@@ -512,12 +514,14 @@ export class Room {
       this.awarded.artist = true;
     }
 
-    if (this.answerVerdict.title || this.answerVerdict.artist) {
+    // If both fields are correct, reveal the answer and end the round.
+    if (this.answerVerdict.title && this.answerVerdict.artist) {
       this.reveal();
       return;
     }
 
-    // Partial or wrong answer: the player is out for this track, the clip resumes.
+    // Partial or wrong answer: award any individual points, exclude the player
+    // for the remainder of the track and resume playback for the others.
     if (this.settings.mode === 'teams' && member.team) {
       for (const teammate of this.players.values()) {
         if (teammate.team === member.team) teammate.lockedOut = true;

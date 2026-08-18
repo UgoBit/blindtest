@@ -38,6 +38,9 @@ export default function HostGame({
   const [answerArtist, setAnswerArtist] = useState('');
   const [remainingResponseSeconds, setRemainingResponseSeconds] = useState(0);
 
+  const clipTotal = state.settings.clipSeconds ?? 30;
+  const pct = Math.max(0, Math.min(100, (state.remainingSeconds / clipTotal) * 100));
+
   useEffect(() => {
     if (!state.responseDeadline) {
       setRemainingResponseSeconds(0);
@@ -93,6 +96,12 @@ export default function HostGame({
                   : 'personne n’a encore répondu'}
               </p>
             )}
+            <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-white/6">
+              <div
+                className="h-full bg-gradient-to-r from-accent to-neon"
+                style={{ width: `${pct}%` }}
+              />
+            </div>
             {isCourse && canSubmitAnswer && (
               <AnswerForm
                 hint="Un seul champ suffit · plus tu buzzes tôt, plus ça rapporte"
