@@ -30,7 +30,8 @@ export default function App() {
   const [autoplayBlocked, setAutoplayBlocked] = useState(false);
   const [roomClosedOpen, setRoomClosedOpen] = useState(false);
   const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
-  const debug = params.get('debug') === '1';
+  const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
+  const debug = params.get('debug') === '1' || hostname === 'localhost' || hostname === '127.0.0.1';
   const [audioEvent, setAudioEvent] = useState<{ action: string; at: number | null } | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 

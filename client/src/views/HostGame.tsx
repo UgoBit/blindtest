@@ -24,7 +24,8 @@ export default function HostGame({
   onCancel,
 }: Props) {
   const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
-  const debug = params.get('debug') === '1';
+  const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
+  const debug = params.get('debug') === '1' || hostname === 'localhost' || hostname === '127.0.0.1';
   const buzzer = state.players.find((player) => player.id === state.buzzedBy) ?? null;
   const buzzerTeam = buzzer?.team
     ? state.teamScores.find((team) => team.team === buzzer.team)
