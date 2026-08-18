@@ -277,6 +277,13 @@ export class Room {
     this.submittedBy = null;
     const stillPlaying = [...this.players.values()].some((player) => this.canBuzz(player.id));
     if (!stillPlaying) {
+      if (this.settings.mode === 'solo') {
+        this.phase = 'listening';
+        this.startClock();
+        this.broadcast();
+        this.emitAudio('play');
+        return;
+      }
       this.reveal();
       return;
     }
@@ -513,6 +520,7 @@ export class Room {
     this.clearResponseTimer();
     this.submittedAnswer = this.cleanAnswer(answer);
     this.answerVerdict = this.judgeAnswer(this.submittedAnswer);
+    // (debug logs removed)
 
     if (this.answerVerdict.title && !this.awarded.title) {
       member.score += POINTS.title;
@@ -543,6 +551,15 @@ export class Room {
     this.buzzedBy = null;
     const stillPlaying = [...this.players.values()].some((p) => this.canBuzz(p.id));
     if (!stillPlaying) {
+      // In solo mode with a single physical buzzer, keep playing even if the
+      // buzzer is locked out so others in the room can keep guessing aloud.
+      if (this.settings.mode === 'solo') {
+        this.phase = 'listening';
+        this.startClock();
+        this.broadcast();
+        this.emitAudio('play');
+        return;
+      }
       this.reveal();
       return;
     }
