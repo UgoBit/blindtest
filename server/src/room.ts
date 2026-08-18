@@ -562,7 +562,6 @@ export class Room {
 
     // Keep submittedBy/submittedAnswer/answerVerdict visible by staying in
     // the 'buzzed' phase for a short feedback window, then resume or reveal.
-    this.buzzedBy = null;
     const stillPlaying = [...this.players.values()].some((p) => this.canBuzz(p.id));
     // Clear any previous feedback timer
     this.clearFeedbackTimer();
@@ -573,6 +572,9 @@ export class Room {
     const feedbackMs = 1200;
     this.feedbackTimer = setTimeout(() => {
       this.clearFeedbackTimer();
+      // Clear the buzzedBy marker now so subsequent state doesn't show a buzzer
+      // while we resume listening or reveal.
+      this.buzzedBy = null;
       if (!stillPlaying) {
         // Solo: resume listening so the clip keeps playing for others.
         if (this.settings.mode === 'solo') {
