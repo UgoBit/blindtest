@@ -78,8 +78,21 @@ export default function App() {
       const audio = audioRef.current;
       if (!audio) return;
       setAudioEvent({ action, at: Date.now() });
-      if (action === 'play') playAudio();
-      else audio.pause();
+      if (action === 'play') {
+        playAudio();
+      } else if (action === 'pause') {
+        audio.pause();
+      } else if (action === 'stop') {
+        try {
+          audio.pause();
+          audio.currentTime = 0;
+          // Clear src so the element stops fetching/playing the preview
+          audio.removeAttribute('src');
+          audio.load();
+        } catch (e) {
+          // ignore
+        }
+      }
     };
 
     socket.on('room_state', onState);

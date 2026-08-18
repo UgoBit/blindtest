@@ -636,7 +636,8 @@ export class Room {
       this.applyRaceScores();
     }
     this.touch();
-    this.emitAudio('pause');
+    // Stop the audio on reveal so clients fully halt playback.
+    this.emitAudio('stop');
     this.broadcast();
   }
 
