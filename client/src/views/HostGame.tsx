@@ -126,22 +126,13 @@ export default function HostGame({
                 ? `Réponse en cours… ${remainingResponseSeconds}s restantes`
                 : 'La personne tape sa réponse sur son appareil.'}
             </p>
-            {canSubmitAnswer && (
-              <AnswerForm
-                title={answerTitle}
-                artist={answerArtist}
-                onTitle={setAnswerTitle}
-                onArtist={setAnswerArtist}
-                onSubmit={() => onSubmitAnswer({ title: answerTitle, artist: answerArtist })}
-              />
-            )}
-            {state.submittedAnswer && state.answerVerdict && (
-              <div className="mt-4 w-full max-w-md rounded-xl bg-black/60 p-3 text-left text-sm animate-fade-in">
-                <div className="mb-1 text-white/60">Réponse envoyée</div>
-                <div className="flex items-center justify-between">
+            {state.submittedAnswer && state.answerVerdict ? (
+              <div className="mt-6 w-full max-w-2xl rounded-xl bg-gradient-to-r from-rose-600/30 via-purple-700/20 to-accent/20 p-6 text-left text-sm shadow-lg z-50">
+                <div className="mb-2 text-sm text-white/60">Réponse envoyée par {buzzer?.name ?? 'Sur place'}</div>
+                <div className="flex items-center justify-between gap-4">
                   <div>
-                    <div className="font-semibold text-white">{state.submittedAnswer.title || '—'}</div>
-                    <div className="text-white/60">{state.submittedAnswer.artist || '—'}</div>
+                    <div className="text-2xl font-bold text-white">{state.submittedAnswer.title || '—'}</div>
+                    <div className="text-white/70">{state.submittedAnswer.artist || '—'}</div>
                   </div>
                   <div className="text-right">
                     <div className={state.answerVerdict.title ? 'text-emerald-300' : 'text-rose-400'}>{state.answerVerdict.title ? 'Titre OK' : 'Titre ✗'}</div>
@@ -149,6 +140,16 @@ export default function HostGame({
                   </div>
                 </div>
               </div>
+            ) : (
+              canSubmitAnswer && (
+                <AnswerForm
+                  title={answerTitle}
+                  artist={answerArtist}
+                  onTitle={setAnswerTitle}
+                  onArtist={setAnswerArtist}
+                  onSubmit={() => onSubmitAnswer({ title: answerTitle, artist: answerArtist })}
+                />
+              )
             )}
           </>
         )}
