@@ -50,6 +50,7 @@ export class Room {
   private timer: NodeJS.Timeout | null = null;
   private responseTimer: NodeJS.Timeout | null = null;
   private tickTimer: NodeJS.Timeout | null = null;
+  private feedbackTimer: NodeJS.Timeout | null = null;
   private clipEndsAt = 0;
   private remainingMs = 0;
   private awarded = { title: false, artist: false };
@@ -257,6 +258,8 @@ export class Room {
     this.timer = null;
     if (this.tickTimer) clearInterval(this.tickTimer);
     this.tickTimer = null;
+    if (this.feedbackTimer) clearTimeout(this.feedbackTimer);
+    this.feedbackTimer = null;
   }
 
   private clearTickTimer(): void {
@@ -268,6 +271,11 @@ export class Room {
     if (this.responseTimer) clearTimeout(this.responseTimer);
     this.responseTimer = null;
     this.responseDeadline = null;
+  }
+
+  private clearFeedbackTimer(): void {
+    if (this.feedbackTimer) clearTimeout(this.feedbackTimer);
+    this.feedbackTimer = null;
   }
 
   private resumeAfterMissingBuzzer(): void {
@@ -540,7 +548,10 @@ export class Room {
     }
 
     // Partial or wrong answer: award any individual points, exclude the player
-    // for the remainder of the track and resume playback for the others.
+    // for the remainder of the track and briefly show their submitted fields
+    // and verdicts before resuming playback so clients (host and players)
+    // can display feedback. This is important for solo mode where the host
+    // physically buzzes but others still guess aloud.
     if (this.settings.mode === 'teams' && member.team) {
       for (const teammate of this.players.values()) {
         if (teammate.team === member.team) teammate.lockedOut = true;
@@ -548,25 +559,38 @@ export class Room {
     } else {
       member.lockedOut = true;
     }
+
+    // Keep submittedBy/submittedAnswer/answerVerdict visible by staying in
+    // the 'buzzed' phase for a short feedback window, then resume or reveal.
     this.buzzedBy = null;
     const stillPlaying = [...this.players.values()].some((p) => this.canBuzz(p.id));
-    if (!stillPlaying) {
-      // In solo mode with a single physical buzzer, keep playing even if the
-      // buzzer is locked out so others in the room can keep guessing aloud.
-      if (this.settings.mode === 'solo') {
-        this.phase = 'listening';
-        this.startClock();
-        this.broadcast();
-        this.emitAudio('play');
+    // Clear any previous feedback timer
+    this.clearFeedbackTimer();
+    // Broadcast immediately so clients show the submitted answer/verdct.
+    this.phase = 'buzzed';
+    this.broadcast();
+
+    const feedbackMs = 1200;
+    this.feedbackTimer = setTimeout(() => {
+      this.clearFeedbackTimer();
+      if (!stillPlaying) {
+        // Solo: resume listening so the clip keeps playing for others.
+        if (this.settings.mode === 'solo') {
+          this.phase = 'listening';
+          this.startClock();
+          this.broadcast();
+          this.emitAudio('play');
+          return;
+        }
+        // No players left: reveal answer.
+        this.reveal();
         return;
       }
-      this.reveal();
-      return;
-    }
-    this.phase = 'listening';
-    this.startClock();
-    this.broadcast();
-    this.emitAudio('play');
+      this.phase = 'listening';
+      this.startClock();
+      this.broadcast();
+      this.emitAudio('play');
+    }, feedbackMs);
   }
 
   /** Course mode: the host accepts a field the matcher refused, for one player. */
