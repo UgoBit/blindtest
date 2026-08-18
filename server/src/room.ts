@@ -49,6 +49,7 @@ export class Room {
   private io: Io;
   private timer: NodeJS.Timeout | null = null;
   private responseTimer: NodeJS.Timeout | null = null;
+  private tickTimer: NodeJS.Timeout | null = null;
   private clipEndsAt = 0;
   private remainingMs = 0;
   private awarded = { title: false, artist: false };
@@ -254,6 +255,13 @@ export class Room {
   private clearTimer(): void {
     if (this.timer) clearTimeout(this.timer);
     this.timer = null;
+    if (this.tickTimer) clearInterval(this.tickTimer);
+    this.tickTimer = null;
+  }
+
+  private clearTickTimer(): void {
+    if (this.tickTimer) clearInterval(this.tickTimer);
+    this.tickTimer = null;
   }
 
   private clearResponseTimer(): void {
@@ -391,6 +399,9 @@ export class Room {
     this.clearTimer();
     this.clipEndsAt = Date.now() + this.remainingMs;
     this.timer = setTimeout(() => this.reveal(), this.remainingMs);
+    // Broadcast frequent updates so clients can animate the remaining time.
+    this.clearTickTimer();
+    this.tickTimer = setInterval(() => this.broadcast(), 250);
   }
 
   buzz(playerId: string): void {
