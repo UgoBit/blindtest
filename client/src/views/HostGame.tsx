@@ -115,7 +115,7 @@ export default function HostGame({
           </>
         )}
 
-        {state.phase === 'buzzed' && buzzer && (
+        {state.phase === 'buzzed' && (buzzer || state.submittedAnswer) && (
           <>
             <p className="text-4xl font-black text-neon">{buzzer.name} a buzzé !</p>
             {state.settings.mode === 'teams' && buzzerTeam && (
