@@ -182,6 +182,21 @@ export default function PlayerGame({ state, playerId, onBuzz, onSubmitAnswer }: 
               {revealDelta > 0 && <span className="buzzer-points">+{revealDelta}</span>}
             </>
           )}
+            {(state.submittedAnswer && state.answerVerdict && state.phase === 'buzzed') && (
+              <div className="absolute bottom-6 left-1/2 z-20 w-11/12 -translate-x-1/2 rounded-xl bg-black/60 p-3 text-left text-sm animate-fade-in">
+                <div className="flex items-center justify-between">
+                  <div className="truncate">
+                    <div className="text-white/60 text-xs">Réponse proposée ({buzzer?.name ?? 'Quelqu’un'})</div>
+                    <div className="mt-1 font-semibold text-white">{state.submittedAnswer.title || '—'}</div>
+                    <div className="text-white/60">{state.submittedAnswer.artist || '—'}</div>
+                  </div>
+                  <div className="ml-3 flex flex-col items-end gap-2">
+                    <span className={state.answerVerdict.title ? 'text-emerald-300' : 'text-rose-400'}>{state.answerVerdict.title ? 'Titre OK' : 'Titre ✗'}</span>
+                    <span className={state.answerVerdict.artist ? 'text-emerald-300' : 'text-rose-400'}>{state.answerVerdict.artist ? 'Artiste OK' : 'Artiste ✗'}</span>
+                  </div>
+                </div>
+              </div>
+            )}
         </span>
       </button>
 

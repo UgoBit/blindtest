@@ -230,8 +230,8 @@ export class Room {
       teamScores: this.settings.mode === 'teams'
         ? this.teamScores.map((score, index) => ({ team: index + 1, name: this.settings.teamNames[index] ?? `Équipe ${index + 1}`, score }))
         : [],
-      submittedAnswer: this.phase === 'reveal' ? this.submittedAnswer : null,
-      answerVerdict: this.phase === 'reveal' ? this.answerVerdict : null,
+      submittedAnswer: this.phase === 'reveal' || this.phase === 'buzzed' ? this.submittedAnswer : null,
+      answerVerdict: this.phase === 'reveal' || this.phase === 'buzzed' ? this.answerVerdict : null,
       responseDeadline:
         this.phase === 'buzzed'
           ? this.responseDeadline

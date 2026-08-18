@@ -135,6 +135,21 @@ export default function HostGame({
                 onSubmit={() => onSubmitAnswer({ title: answerTitle, artist: answerArtist })}
               />
             )}
+            {state.submittedAnswer && state.answerVerdict && (
+              <div className="mt-4 w-full max-w-md rounded-xl bg-black/60 p-3 text-left text-sm animate-fade-in">
+                <div className="mb-1 text-white/60">Réponse envoyée</div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="font-semibold text-white">{state.submittedAnswer.title || '—'}</div>
+                    <div className="text-white/60">{state.submittedAnswer.artist || '—'}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className={state.answerVerdict.title ? 'text-emerald-300' : 'text-rose-400'}>{state.answerVerdict.title ? 'Titre OK' : 'Titre ✗'}</div>
+                    <div className={state.answerVerdict.artist ? 'text-emerald-300' : 'text-rose-400'}>{state.answerVerdict.artist ? 'Artiste OK' : 'Artiste ✗'}</div>
+                  </div>
+                </div>
+              </div>
+            )}
           </>
         )}
 
