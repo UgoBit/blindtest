@@ -106,14 +106,26 @@ export default function PlayerGame({ state, playerId, onBuzz, onSubmitAnswer }: 
         }`}
       >
         {(state.phase === 'listening' || state.phase === 'buzzed') && (
-          <span
-            aria-hidden
-            className="absolute inset-0 rounded-full"
-            style={{
-              zIndex: 0,
-              background: `conic-gradient(rgba(124,92,255,0.85) ${pct}%, rgba(255,255,255,0.04) 0%)`,
-            }}
-          />
+          <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet" aria-hidden style={{ zIndex: 0, position: 'absolute', left: 0, top: 0 }}>
+            <defs>
+              <linearGradient id="g1" x1="0%" x2="100%">
+                <stop offset="0%" stopColor="#7c5cff" />
+                <stop offset="100%" stopColor="#ff2e88" />
+              </linearGradient>
+            </defs>
+            <circle cx="50" cy="50" r="44" fill="rgba(255,255,255,0.04)" />
+            <circle
+              cx="50"
+              cy="50"
+              r="44"
+              fill="none"
+              stroke="url(#g1)"
+              strokeWidth="12"
+              strokeLinecap="round"
+              strokeDasharray={Math.PI * 2 * 44}
+              style={{ transform: 'rotate(-90deg)', transformOrigin: '50% 50%', strokeDashoffset: Math.PI * 2 * 44 * (1 - pct / 100), transition: 'stroke-dashoffset 120ms linear' }}
+            />
+          </svg>
         )}
         {state.phase !== 'reveal' && (
           <>

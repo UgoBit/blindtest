@@ -408,7 +408,7 @@ export class Room {
     this.timer = setTimeout(() => this.reveal(), this.remainingMs);
     // Broadcast frequent updates so clients can animate the remaining time.
     this.clearTickTimer();
-    this.tickTimer = setInterval(() => this.broadcast(), 250);
+    this.tickTimer = setInterval(() => this.broadcast(), 100);
   }
 
   buzz(playerId: string): void {

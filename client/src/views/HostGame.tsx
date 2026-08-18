@@ -99,7 +99,7 @@ export default function HostGame({
             <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-white/6">
               <div
                 className="h-full bg-gradient-to-r from-accent to-neon"
-                style={{ width: `${pct}%` }}
+                style={{ width: `${pct}%`, transition: 'width 120ms linear' }}
               />
             </div>
             {isCourse && canSubmitAnswer && (
