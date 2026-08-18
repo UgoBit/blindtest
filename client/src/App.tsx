@@ -29,6 +29,9 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [autoplayBlocked, setAutoplayBlocked] = useState(false);
   const [roomClosedOpen, setRoomClosedOpen] = useState(false);
+  const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+  const debug = params.get('debug') === '1';
+  const [audioEvent, setAudioEvent] = useState<{ action: string; at: number | null } | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
@@ -74,6 +77,7 @@ export default function App() {
     const onAudio = ({ action }: { action: 'play' | 'pause' | 'stop' }) => {
       const audio = audioRef.current;
       if (!audio) return;
+      setAudioEvent({ action, at: Date.now() });
       if (action === 'play') playAudio();
       else audio.pause();
     };
@@ -253,6 +257,13 @@ export default function App() {
           <button className="btn-primary w-full" onClick={playAudio}>
             Reprendre le son
           </button>
+        </div>
+      )}
+
+      {debug && audioEvent && (
+        <div style={{ position: 'fixed', left: 12, bottom: 12, background: 'rgba(0,0,0,0.6)', color: 'white', padding: 8, borderRadius: 6, zIndex: 100 }}>
+          <div style={{ fontWeight: 700 }}>DEBUG audio</div>
+          <div>action: {audioEvent.action} · at: {new Date(audioEvent.at ?? 0).toLocaleTimeString()}</div>
         </div>
       )}
 
