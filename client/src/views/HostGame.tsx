@@ -23,6 +23,8 @@ export default function HostGame({
   onNext,
   onCancel,
 }: Props) {
+  const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+  const debug = params.get('debug') === '1';
   const buzzer = state.players.find((player) => player.id === state.buzzedBy) ?? null;
   const buzzerTeam = buzzer?.team
     ? state.teamScores.find((team) => team.team === buzzer.team)
@@ -278,6 +280,12 @@ export default function HostGame({
           </>
         </div>
       </aside>
+      {debug && (
+        <div style={{ position: 'fixed', right: 12, bottom: 12, width: 520, maxHeight: '50vh', overflow: 'auto', background: 'rgba(0,0,0,0.6)', color: 'white', padding: 12, borderRadius: 8, zIndex: 60 }}>
+          <div style={{ fontWeight: 700, marginBottom: 8 }}>DEBUG room_state</div>
+          <pre style={{ whiteSpace: 'pre-wrap', fontSize: 12 }}>{JSON.stringify(state, null, 2)}</pre>
+        </div>
+      )}
     </div>
   );
 }
