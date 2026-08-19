@@ -8,10 +8,30 @@ import HostGame from './views/HostGame';
 import PlayerGame from './views/PlayerGame';
 import Finished from './views/Finished';
 import InfoModal from './components/InfoModal';
+import VolumeControl from './components/VolumeControl';
 
 const codeFromUrl = (): string => {
-  const match = window.location.pathname.match(/^\/join\/([A-Za-z0-9]{4})/);
-  return match ? match[1].toUpperCase() : '';
+  // 1. Paramètres de requête : ?code=ABCD, ?join=ABCD, ?room=ABCD
+  const params = new URLSearchParams(window.location.search);
+  const queryCode = params.get('code') || params.get('join') || params.get('room');
+  if (queryCode && /^[A-Za-z0-9]{4}$/i.test(queryCode.trim())) {
+    return queryCode.trim().toUpperCase();
+  }
+
+  // 2. Chemins d'URL : /join/ABCD, /host/ABCD ou directement /ABCD
+  const pathname = window.location.pathname.trim();
+  const joinMatch = pathname.match(/^\/join\/([A-Za-z0-9]{4})(?:\/|$)/i);
+  if (joinMatch) return joinMatch[1].toUpperCase();
+
+  const hostMatch = pathname.match(/^\/host\/([A-Za-z0-9]{4})(?:\/|$)/i);
+  if (hostMatch) return hostMatch[1].toUpperCase();
+
+  const directMatch = pathname.match(/^\/([A-Za-z0-9]{4})(?:\/|$)/i);
+  if (directMatch && !['join', 'host', 'api'].includes(directMatch[1].toLowerCase())) {
+    return directMatch[1].toUpperCase();
+  }
+
+  return '';
 };
 
 const isAutoplayBlocked = (reason: unknown): boolean =>
@@ -148,6 +168,12 @@ export default function App() {
     const rejoin = () => {
       const stored = loadSession();
       if (!stored) return;
+      const urlCode = codeFromUrl();
+      // Si l'utilisateur est arrivé avec un code de salon explicite dans l'URL différent de l'ancienne session,
+      // on ne tente pas de rejoindre l'ancien salon mort.
+      if (urlCode && urlCode !== stored.code) {
+        return;
+      }
       socket.emit('join_room', { code: stored.code, name: stored.name, playerId: stored.playerId }, (res) => {
         if (!res.ok) {
           clearSession();
@@ -279,11 +305,16 @@ export default function App() {
             window.history.replaceState(null, '', '/');
           }}
         >
-          ← Quitter la session
+          ← Quitter
         </button>
-        <span className="text-xs font-semibold uppercase tracking-widest text-white/40">
-          Code salon : <span className="text-neon">{state.code}</span>
-        </span>
+        <div className="flex items-center gap-3 sm:gap-4">
+          {shouldPlayAudio && (
+            <VolumeControl volume={volume} onVolumeChange={handleVolumeChange} />
+          )}
+          <span className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-xs font-semibold uppercase tracking-wider text-white/60">
+            Salon : <span className="font-mono font-bold text-neon">{state.code}</span>
+          </span>
+        </div>
       </div>
       {shouldPlayAudio && (
         <audio
@@ -332,8 +363,6 @@ export default function App() {
           <>
             <HostGame
               state={state}
-              volume={volume}
-              onVolumeChange={handleVolumeChange}
               onCorrectAnswer={(field, target) => socket.emit('correct_answer', { field, playerId: target })}
               canSubmitAnswer={state.buzzedBy === playerId || hostRacing}
               onSubmitAnswer={(answer) => socket.emit('submit_answer', answer)}
@@ -372,8 +401,6 @@ export default function App() {
           <PlayerGame
             state={state}
             playerId={playerId}
-            volume={volume}
-            onVolumeChange={handleVolumeChange}
             onBuzz={() => socket.emit('buzz')}
             onSubmitAnswer={(answer) => socket.emit('submit_answer', answer)}
           />

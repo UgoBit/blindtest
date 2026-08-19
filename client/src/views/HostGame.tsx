@@ -3,7 +3,6 @@ import type { RoomState } from '../../../shared/types';
 import Scores from '../components/Scores';
 import ConfirmModal from '../components/ConfirmModal';
 import AnswerForm from '../components/AnswerForm';
-import VolumeControl from '../components/VolumeControl';
 
 interface Props {
   state: RoomState;
@@ -13,8 +12,6 @@ interface Props {
   onSkip: () => void;
   onNext: () => void;
   onCancel: () => void;
-  volume?: number;
-  onVolumeChange?: (v: number) => void;
 }
 
 export default function HostGame({
@@ -25,8 +22,6 @@ export default function HostGame({
   onSkip,
   onNext,
   onCancel,
-  volume = 0.8,
-  onVolumeChange,
 }: Props) {
   // Debug UI removed — hidden in normal runs
   const debug = false;
@@ -95,14 +90,9 @@ export default function HostGame({
   return (
     <div className="mx-auto grid max-w-6xl gap-6 px-4 py-8 lg:grid-cols-[1fr_300px]">
       <div className="card flex min-h-[420px] flex-col items-center justify-center gap-6 text-center">
-        <div className="flex w-full items-center justify-between px-2">
-          <p className="text-sm font-semibold uppercase tracking-widest text-white/50">
-            Manche {state.track?.index ?? 0} / {state.track?.total ?? 0}
-          </p>
-          {onVolumeChange && (
-            <VolumeControl volume={volume} onVolumeChange={onVolumeChange} />
-          )}
-        </div>
+        <p className="text-sm font-semibold uppercase tracking-widest text-white/50">
+          Manche {state.track?.index ?? 0} / {state.track?.total ?? 0}
+        </p>
 
         {state.phase === 'countdown' && (
           <p className="animate-pulse text-5xl font-black">Préparez-vous…</p>

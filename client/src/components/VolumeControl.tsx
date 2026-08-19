@@ -36,14 +36,14 @@ export default function VolumeControl({ volume, onVolumeChange, className = '' }
 
   return (
     <div
-      className={`inline-flex items-center gap-2.5 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 backdrop-blur-md transition hover:border-white/20 hover:bg-white/10 ${className}`}
-      title={`Volume sonore : ${pct}%`}
+      className={`inline-flex items-center gap-2 rounded-full border border-white/10 bg-slate-900/80 px-2.5 py-1 text-xs shadow-lg backdrop-blur-md transition hover:border-white/20 hover:bg-slate-900 ${className}`}
+      title={`Volume : ${pct}%`}
     >
       <button
         type="button"
         onClick={toggleMute}
         aria-label={isMuted ? 'Rétablir le son' : 'Couper le son'}
-        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-base transition hover:scale-110 active:scale-95"
+        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-sm transition hover:scale-110 active:scale-95"
       >
         {getVolumeIcon()}
       </button>
@@ -53,15 +53,15 @@ export default function VolumeControl({ volume, onVolumeChange, className = '' }
           type="range"
           min="0"
           max="1"
-          step="0.01"
+          step="0.02"
           value={volume}
           onChange={(e) => onVolumeChange(parseFloat(e.target.value))}
-          className="h-1.5 w-20 cursor-pointer appearance-none rounded-lg bg-white/20 accent-neon sm:w-28"
-          aria-label="Contrôle du volume"
+          className="h-1.5 w-16 cursor-pointer appearance-none rounded-lg bg-white/20 accent-neon transition sm:w-20"
+          aria-label="Volume audio"
         />
       </div>
 
-      <span className="min-w-[2.2rem] text-right text-xs font-semibold tabular-nums text-white/70">
+      <span className="min-w-[2rem] text-right font-mono text-[11px] font-semibold text-white/70">
         {pct}%
       </span>
     </div>

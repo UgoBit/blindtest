@@ -2,15 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 import type { RoomState } from '../../../shared/types';
 import Scores from '../components/Scores';
 import AnswerForm from '../components/AnswerForm';
-import VolumeControl from '../components/VolumeControl';
 
 interface Props {
   state: RoomState;
   playerId: string;
   onBuzz: () => void;
   onSubmitAnswer: (answer: { title: string; artist: string }) => void;
-  volume?: number;
-  onVolumeChange?: (vol: number) => void;
 }
 
 export default function PlayerGame({
@@ -18,8 +15,6 @@ export default function PlayerGame({
   playerId,
   onBuzz,
   onSubmitAnswer,
-  volume = 0.8,
-  onVolumeChange,
 }: Props) {
   const me = state.players.find((player) => player.id === playerId);
   const buzzer = state.players.find((player) => player.id === state.buzzedBy) ?? null;
@@ -131,14 +126,9 @@ export default function PlayerGame({
     <div className="mx-auto flex min-h-screen max-w-md flex-col gap-5 px-4 py-6">
       <header className="flex items-center justify-between text-sm text-white/70">
         <span className="font-semibold">{me?.name}</span>
-        <div className="flex items-center gap-3">
-          {state.settings.audioPlayersEnabled && onVolumeChange && (
-            <VolumeControl volume={volume} onVolumeChange={onVolumeChange} />
-          )}
-          <span className="rounded-full bg-white/10 px-2.5 py-1 text-xs font-bold text-accent">
-            Manche {state.track?.index ?? 0}/{state.track?.total ?? 0} · {displayedScore} pts
-          </span>
-        </div>
+        <span className="rounded-full bg-white/10 px-2.5 py-1 text-xs font-bold text-accent">
+          Manche {state.track?.index ?? 0}/{state.track?.total ?? 0} · {displayedScore} pts
+        </span>
       </header>
 
       {/* MODE COURSE : Saisie directe sans buzzer inutile */}
