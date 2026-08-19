@@ -1,5 +1,5 @@
 import type { Difficulty } from '../../shared/types.js';
-import { THEME_BY_ID, type ThemeDefinition } from './themes.js';
+import { DECADE_QUERIES, GENRE_SOURCES, THEME_BY_ID, type ThemeDefinition, type ThemeSource } from './themes.js';
 
 export interface Track {
   id: string;
@@ -18,7 +18,7 @@ interface DeezerTrack {
   preview?: string;
   rank?: number;
   artist?: { name?: string };
-  album?: { cover_medium?: string; cover_big?: string };
+  album?: { cover_medium?: string; cover_big?: string; release_date?: string };
 }
 
 interface DeezerPlaylist {
@@ -54,17 +54,17 @@ function toTrack(t: DeezerTrack): Track | null {
 }
 
 export function normalizeAnswer(value: string): string {
+  if (!value) return '';
   const withoutDecorations = value
     .replace(/\(.*?\)|\[.*?\]/g, '')
-    .replace(/\b(?:feat\.?|ft\.?|with|avec)\b.*$/i, '')
-    .replace(/\s[-–—]\s*(?:live|radio edit|remaster(?:ed)?|\d{4}).*$/i, '');
+    .replace(/\b(?:feat\.?|ft\.?|with|avec|featuring|pres\.?|presents|vs\.?|prod\.?\s*by)\b.*$/i, '')
+    .replace(/\s[-–—]\s*(?:live|radio edit|remaster(?:ed)?|\d{4}|album version|single version|acoustic|edit|deluxe|version|clip).*$/i, '');
   return withoutDecorations
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
-    .replace(/\(.*?\)|\[.*?\]/g, '')
     .replace(/[^a-z0-9]+/g, ' ')
-    .replace(/^(?:the|le|la|les|l|un|une|a|an)\s+/, '')
+    .replace(/^(?:the|le|la|les|l|un|une|des|a|an|el|los|las)\s+/, '')
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -85,49 +85,158 @@ function levenshtein(left: string, right: string): number {
   return previous[right.length];
 }
 
-function singleAnswerMatches(input: string, expected: string): boolean {
+const COMMON_ALIASES: Record<string, string[]> = {
+  rhcp: ['red hot chili peppers', 'red hot'],
+  soad: ['system of a down'],
+  ratm: ['rage against the machine'],
+  ccr: ['creedence clearwater revival', 'creedence'],
+  bep: ['black eyed peas'],
+  acdc: ['ac dc', 'ac/dc'],
+  gnr: ['guns n roses', 'guns and roses'],
+  gims: ['maitre gims'],
+  chris: ['christine and the queens'],
+  redcar: ['christine and the queens'],
+  shm: ['swedish house mafia'],
+  m: ['matthieu chedid', '-m-'],
+};
+
+const ARTIST_PREFIX_REGEX = /^(?:dj|mc|dr|doctor|lil|big|young|saint|st|sir|lord|maitre)\s+/i;
+
+function phonetic(str: string): string {
+  return str
+    .replace(/ph/g, 'f')
+    .replace(/ch(?=[aeiou])/g, 'sh')
+    .replace(/qu|ck|k/g, 'c')
+    .replace(/y/g, 'i')
+    .replace(/w/g, 'v')
+    .replace(/(.)\1+/g, '$1');
+}
+
+export function singleAnswerMatches(input: string, expected: string): boolean {
   const left = normalizeAnswer(input);
   const right = normalizeAnswer(expected);
-  if (!left || !right || Math.min(left.length, right.length) < 3) return false;
+  if (!left || !right) return false;
+
+  // Exact normalized match
   if (left === right) return true;
-  if ((left.includes(right) || right.includes(left)) && Math.min(left.length, right.length) >= 4) return true;
-  const similarity = 1 - levenshtein(left, right) / Math.max(left.length, right.length);
-  return similarity >= 0.8;
+
+  // Space-stripped match (e.g. "acdc" vs "ac dc", "u 2" vs "u2")
+  if (left.replace(/\s+/g, '') === right.replace(/\s+/g, '')) return true;
+
+  // Short answers (length <= 2, e.g. "U2", "IAM", "NTM", "M")
+  if (right.length <= 2 || left.length <= 2) {
+    return left === right;
+  }
+
+  // Phonetic match (handles double consonants, ph/f, ck/c, y/i, etc.)
+  const pLeft = phonetic(left);
+  const pRight = phonetic(right);
+  if (pLeft === pRight || (pLeft.length >= 4 && (pRight.includes(pLeft) || pLeft.includes(pRight)))) {
+    return true;
+  }
+
+  // Substring inclusion if substantial (e.g. "beatles" in "the beatles", "jackson" in "michael jackson")
+  if (left.length >= 3 && right.length >= 3) {
+    if (right.includes(left) || left.includes(right)) {
+      const ratio = Math.min(left.length, right.length) / Math.max(left.length, right.length);
+      // If either word contains the other and length is reasonable or length >= 4
+      if (ratio >= 0.35 || Math.min(left.length, right.length) >= 4) {
+        return true;
+      }
+    }
+  }
+
+  const dist = levenshtein(left, right);
+  const maxLen = Math.max(left.length, right.length);
+
+  // Generous Levenshtein thresholds for typoes
+  if (maxLen >= 8 && dist <= 3) return true;
+  if (maxLen >= 6 && dist <= 2) return true;
+  if (maxLen >= 4 && dist <= 1) return true;
+
+  const similarity = 1 - dist / maxLen;
+  if (similarity >= 0.70) return true;
+
+  // Also check phonetic distance
+  const pDist = levenshtein(pLeft, pRight);
+  const pMaxLen = Math.max(pLeft.length, pRight.length);
+  return pMaxLen >= 4 && (pDist <= 1 || (1 - pDist / pMaxLen >= 0.70));
 }
 
 /**
- * Artist answers may name one significant word (at least four characters);
- * this keeps "beatles" valid for "The Beatles" without accepting fragments
- * such as "da".
+ * Artist answers are extra lenient: accepts surnames alone (e.g. "Jackson" for "Michael Jackson",
+ * "Goldman" for "Jean-Jacques Goldman", "Bowie" for "David Bowie"), common aliases,
+ * prefixes dropped (e.g. "Snake" for "DJ Snake"), featurings, and typo tolerance.
  */
 export function answerMatches(input: string, expected: string, kind: 'title' | 'artist'): boolean {
   if (kind === 'artist') {
-    const candidates = expected.split(/\s*(?:,|&|\bet\b|\band\b|\bx\b)\s*/i);
+    const rawInput = normalizeAnswer(input);
+    if (!rawInput) return false;
+
+    // Check alias dictionaries
+    for (const [acronym, targets] of Object.entries(COMMON_ALIASES)) {
+      if (rawInput === acronym) {
+        if (targets.some((target) => singleAnswerMatches(target, expected))) return true;
+      }
+      for (const target of targets) {
+        if (rawInput === target && singleAnswerMatches(acronym, expected)) return true;
+      }
+    }
+
+    // Split candidate collaborating artists (feat, &, et, with, comma, slash, etc.)
+    const candidates = expected.split(
+      /\s*(?:,|&|\+|\/|\bet\b|\band\b|\bx\b|\bvs\.?\b|\bfeat\.?\b|\bft\.?\b|\bfeaturing\b|\bwith\b|\bavec\b)\s*/i,
+    );
+
     return candidates.some((candidate) => {
+      // 1. Direct candidate matching
       if (singleAnswerMatches(input, candidate)) return true;
-      const normalizedInput = normalizeAnswer(input);
-      return normalizeAnswer(candidate)
-        .split(' ')
-        .filter((word) => word.length >= 4)
-        .some((word) => singleAnswerMatches(normalizedInput, word));
+
+      // 2. Candidate without honorific/prefix (e.g. "DJ Snake" -> "Snake", "Dr Dre" -> "Dre")
+      const candidateNorm = normalizeAnswer(candidate);
+      const strippedCandidate = candidateNorm.replace(ARTIST_PREFIX_REGEX, '');
+      if (strippedCandidate !== candidateNorm && singleAnswerMatches(input, strippedCandidate)) {
+        return true;
+      }
+
+      // Input without prefix (e.g. player typed "DJ Snake" for "Snake")
+      const strippedInput = rawInput.replace(ARTIST_PREFIX_REGEX, '');
+      if (strippedInput !== rawInput && singleAnswerMatches(strippedInput, candidateNorm)) {
+        return true;
+      }
+
+      // 3. Match individual significant words / names in candidate (e.g. "Goldman", "Jackson", "Celine", "Hallyday")
+      const candidateWords = candidateNorm.split(' ').filter((w) => w.length >= 3);
+      if (candidateWords.some((word) => singleAnswerMatches(rawInput, word))) {
+        return true;
+      }
+
+      // 4. Token subset match: all words typed by the user match words in the artist
+      const inputWords = rawInput.split(' ').filter((w) => w.length >= 2);
+      if (
+        inputWords.length > 1 &&
+        inputWords.every((inWord) => candidateWords.some((candWord) => singleAnswerMatches(inWord, candWord)))
+      ) {
+        return true;
+      }
+
+      return false;
     });
   }
+
+  // Title matching
   return singleAnswerMatches(input, expected);
 }
 
-async function loadPool(theme: ThemeDefinition): Promise<Track[]> {
-  const cached = poolCache.get(theme.id);
-  if (cached && Date.now() - cached.at < POOL_TTL_MS) return cached.tracks;
-
+async function fetchFromSource(source: ThemeSource, extraQuery = ''): Promise<Track[]> {
   const tracks: Track[] = [];
-  if (theme.source.kind === 'chart') {
-    const genreId = theme.source.genreId;
+  if (source.kind === 'chart') {
+    const genreId = source.genreId;
     const data = await fetchJson<{ data?: DeezerTrack[] }>(`${DEEZER}/chart/${genreId}/tracks?limit=100`);
     for (const t of data?.data ?? []) {
       const track = toTrack(t);
       if (track) tracks.push(track);
     }
-    // Genre radios widen the popularity spread so the hard tier is not just chart hits.
     const radios = await fetchJson<{ data?: { id: number }[] }>(`${DEEZER}/genre/${genreId}/radios`);
     for (const radio of (radios?.data ?? []).slice(0, 3)) {
       const radioTracks = await fetchJson<{ data?: DeezerTrack[] }>(
@@ -139,11 +248,14 @@ async function loadPool(theme: ThemeDefinition): Promise<Track[]> {
       }
     }
   } else {
-    for (const query of theme.source.queries) {
+    for (const query of source.queries) {
+      const composed = extraQuery ? `${query} ${extraQuery}`.trim() : query;
+
+      // 1) Search playlists
       const found = await fetchJson<{ data?: DeezerPlaylist[] }>(
-        `${DEEZER}/search/playlist?q=${encodeURIComponent(query)}&limit=5`,
+        `${DEEZER}/search/playlist?q=${encodeURIComponent(composed)}&limit=5`,
       );
-      const playlists = (found?.data ?? []).filter((p) => (p.nb_tracks ?? 0) >= 25).slice(0, 2);
+      const playlists = (found?.data ?? []).filter((p) => (p.nb_tracks ?? 0) >= 20).slice(0, 3);
       for (const playlist of playlists) {
         const data = await fetchJson<{ data?: DeezerTrack[] }>(
           `${DEEZER}/playlist/${playlist.id}/tracks?limit=100`,
@@ -153,14 +265,34 @@ async function loadPool(theme: ThemeDefinition): Promise<Track[]> {
           if (track) tracks.push(track);
         }
       }
+
+      // 2) Direct search
+      const direct = await fetchJson<{ data?: DeezerTrack[] }>(
+        `${DEEZER}/search?q=${encodeURIComponent(composed)}&limit=60`,
+      );
+      for (const t of direct?.data ?? []) {
+        const track = toTrack(t);
+        if (track) tracks.push(track);
+      }
     }
   }
+  return tracks;
+}
+
+async function loadPool(theme: ThemeDefinition, opts?: { yearRanges?: string[]; genres?: string[] }): Promise<Track[]> {
+  const optsKey = JSON.stringify(opts ?? {});
+  const cacheKey = `${theme.id}|${optsKey}`;
+  const cached = poolCache.get(cacheKey);
+  if (cached && Date.now() - cached.at < POOL_TTL_MS) return cached.tracks;
+
+  const extraQuery = [...(opts?.genres ?? []), ...(opts?.yearRanges ?? [])].join(' ');
+  const tracks = await fetchFromSource(theme.source, extraQuery);
 
   const unique = new Map(
     tracks.map((track) => [`${normalizeAnswer(track.title)}|${normalizeAnswer(track.artist)}`, track]),
   );
   const pool = [...unique.values()];
-  poolCache.set(theme.id, { at: Date.now(), tracks: pool });
+  poolCache.set(cacheKey, { at: Date.now(), tracks: pool });
   return pool;
 }
 
@@ -186,17 +318,63 @@ function gradeByDifficulty(pool: Track[], difficulty: Difficulty): Track[] {
   return ranked.slice(band * 2);
 }
 
-/** Builds a playlist of unique tracks drawn evenly from every selected theme. */
+/** Builds a playlist of unique tracks drawn evenly from every selected theme, decade, and genre. */
 export async function buildPlaylist(
   themeIds: string[],
   count: number,
   difficulty: Difficulty = 'mixte',
+  opts?: { yearRanges?: string[]; genres?: string[] },
 ): Promise<Track[]> {
-  const themes = themeIds.map((id) => THEME_BY_ID.get(id)).filter((t): t is ThemeDefinition => !!t);
-  if (themes.length === 0) return [];
+  const definitions: ThemeDefinition[] = [];
+
+  // 1. Explicit theme IDs
+  for (const id of themeIds) {
+    const theme = THEME_BY_ID.get(id);
+    if (theme && !definitions.some((d) => d.id === theme.id)) {
+      definitions.push(theme);
+    }
+  }
+
+  // 2. Decade ranges
+  if (opts?.yearRanges) {
+    for (const decade of opts.yearRanges) {
+      const queries = DECADE_QUERIES[decade];
+      if (queries && !definitions.some((d) => d.id === decade)) {
+        definitions.push({
+          id: decade,
+          label: `Années ${decade}`,
+          emoji: '📅',
+          category: 'epoque',
+          source: { kind: 'playlists', queries },
+        });
+      }
+    }
+  }
+
+  // 3. Genre selections
+  if (opts?.genres) {
+    for (const genre of opts.genres) {
+      const source = GENRE_SOURCES[genre];
+      if (source && !definitions.some((d) => d.id === genre)) {
+        definitions.push({
+          id: genre,
+          label: genre,
+          emoji: '🎵',
+          category: 'genre',
+          source,
+        });
+      }
+    }
+  }
+
+  // Fallback if empty: Top hits
+  if (definitions.length === 0) {
+    const top = THEME_BY_ID.get('top');
+    if (top) definitions.push(top);
+  }
 
   const pools = await Promise.all(
-    themes.map((theme) => loadPool(theme).then((pool) => shuffle(gradeByDifficulty(pool, difficulty)))),
+    definitions.map((theme) => loadPool(theme, opts).then((pool) => shuffle(gradeByDifficulty(pool, difficulty)))),
   );
   const seen = new Set<string>();
   const picked: Track[] = [];

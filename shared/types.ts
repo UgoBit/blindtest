@@ -9,6 +9,42 @@ export interface Theme {
 
 export type GameMode = 'phones' | 'solo' | 'teams' | 'course';
 
+export interface DecadeOption {
+  id: string;
+  label: string;
+  emoji: string;
+  years: string;
+}
+
+export const DECADES_LIST: DecadeOption[] = [
+  { id: '60s', label: 'Années 60', emoji: '🎙️', years: '1960-1969' },
+  { id: '70s', label: 'Années 70', emoji: '🕺', years: '1970-1979' },
+  { id: '80s', label: 'Années 80', emoji: '📼', years: '1980-1989' },
+  { id: '90s', label: 'Années 90', emoji: '💿', years: '1990-1999' },
+  { id: '2000s', label: 'Années 2000', emoji: '📱', years: '2000-2009' },
+  { id: '2010s', label: 'Années 2010', emoji: '🎧', years: '2010-2019' },
+  { id: '2020s', label: 'Années 2020+', emoji: '🚀', years: '2020 à aujourd\'hui' },
+];
+
+export interface GenreOption {
+  id: string;
+  label: string;
+  emoji: string;
+}
+
+export const GENRES_LIST: GenreOption[] = [
+  { id: 'pop', label: 'Pop', emoji: '🎤' },
+  { id: 'rock', label: 'Rock', emoji: '🎸' },
+  { id: 'rap', label: 'Rap / Hip-hop', emoji: '🧢' },
+  { id: 'electro', label: 'Électro / Dance', emoji: '🪩' },
+  { id: 'rnb', label: 'R&B / Soul', emoji: '💜' },
+  { id: 'metal', label: 'Metal', emoji: '🤘' },
+  { id: 'variete-fr', label: 'Variété française', emoji: '🇫🇷' },
+  { id: 'disco', label: 'Disco / Funk', emoji: '✨' },
+  { id: 'reggae', label: 'Reggae', emoji: '🌴' },
+  { id: 'jazz', label: 'Jazz / Blues', emoji: '🎷' },
+];
+
 export interface Player {
   id: string;
   name: string;
@@ -65,6 +101,10 @@ export interface RoomSettings {
   audioPlayersEnabled: boolean;
   /** Solo only: when false the round just plays and reveals, without buzzer nor score. */
   buzzerEnabled: boolean;
+  /** Decade ranges (e.g. "70-80", "80-90", "2020+") */
+  yearRanges?: string[];
+  /** Preferred genres (e.g. rock, pop, rap) */
+  genres?: string[];
 }
 
 export interface RoomState {

@@ -2,15 +2,25 @@ import { useEffect, useRef, useState } from 'react';
 import type { RoomState } from '../../../shared/types';
 import Scores from '../components/Scores';
 import AnswerForm from '../components/AnswerForm';
+import VolumeControl from '../components/VolumeControl';
 
 interface Props {
   state: RoomState;
   playerId: string;
   onBuzz: () => void;
   onSubmitAnswer: (answer: { title: string; artist: string }) => void;
+  volume?: number;
+  onVolumeChange?: (vol: number) => void;
 }
 
-export default function PlayerGame({ state, playerId, onBuzz, onSubmitAnswer }: Props) {
+export default function PlayerGame({
+  state,
+  playerId,
+  onBuzz,
+  onSubmitAnswer,
+  volume = 0.8,
+  onVolumeChange,
+}: Props) {
   const me = state.players.find((player) => player.id === playerId);
   const buzzer = state.players.find((player) => player.id === state.buzzedBy) ?? null;
   const buzzerTeam = buzzer?.team
@@ -25,8 +35,7 @@ export default function PlayerGame({ state, playerId, onBuzz, onSubmitAnswer }: 
   const iAnswered = state.answeredBy.includes(playerId);
   const iBuzzed = state.buzzedBy === playerId || iRace;
   const canBuzz = state.phase === 'listening' && !me?.lockedOut && !iRace && !iAnswered;
-  const canSubmit = state.phase === 'buzzed' ? state.buzzedBy === playerId : iRace;
-  const myRace = state.raceAnswers.find((race) => race.playerId === playerId) ?? null;
+  const canSubmit = state.phase === 'buzzed' ? state.buzzedBy === playerId : (isCourse && state.phase === 'listening' && !iAnswered && !me?.lockedOut);
   const [flash, setFlash] = useState(false);
   const [coverFailed, setCoverFailed] = useState(false);
   const previousPhase = useRef(state.phase);
@@ -35,6 +44,10 @@ export default function PlayerGame({ state, playerId, onBuzz, onSubmitAnswer }: 
   const [answerTitle, setAnswerTitle] = useState('');
   const [answerArtist, setAnswerArtist] = useState('');
   const [remainingResponseSeconds, setRemainingResponseSeconds] = useState(0);
+
+  const answeredNames = state.answeredBy
+    .map((id) => state.players.find((player) => player.id === id)?.name)
+    .filter((name): name is string => !!name);
 
   useEffect(() => {
     if (!canSubmit || !state.responseDeadline) {
@@ -48,11 +61,11 @@ export default function PlayerGame({ state, playerId, onBuzz, onSubmitAnswer }: 
   }, [canSubmit, state.responseDeadline]);
 
   useEffect(() => {
-    if (!canSubmit) {
+    if (state.phase === 'countdown' || state.phase === 'reveal') {
       setAnswerTitle('');
       setAnswerArtist('');
     }
-  }, [canSubmit]);
+  }, [state.phase]);
 
   useEffect(() => {
     if (!iBuzzed) return;
@@ -85,115 +98,195 @@ export default function PlayerGame({ state, playerId, onBuzz, onSubmitAnswer }: 
             ? 'buzzer-reveal'
             : 'buzzer-settled';
   const hasCover = state.phase === 'reveal' && state.answer?.cover && !coverFailed;
-  const buzzerInitial = buzzer?.name.trim().charAt(0).toUpperCase();
   const clipTotal = state.settings.clipSeconds ?? 30;
-  const pct = Math.max(0, Math.min(100, (state.remainingSeconds / clipTotal) * 100));
+  // Smooth local interpolation of remaining seconds to avoid visible ticks.
+  const [smoothRemaining, setSmoothRemaining] = useState<number>(state.remainingSeconds);
+  const lastServerAt = useRef<number>(Date.now());
+  const lastServerRemaining = useRef<number>(state.remainingSeconds);
+
+  useEffect(() => {
+    lastServerAt.current = Date.now();
+    lastServerRemaining.current = state.remainingSeconds;
+    setSmoothRemaining(state.remainingSeconds);
+  }, [state.remainingSeconds]);
+
+  useEffect(() => {
+    let raf = 0;
+    const tick = () => {
+      if (state.phase !== 'listening') return;
+      const elapsed = (Date.now() - lastServerAt.current) / 1000;
+      const next = Math.max(0, lastServerRemaining.current - elapsed);
+      setSmoothRemaining(next);
+      raf = requestAnimationFrame(tick);
+    };
+    if (state.phase === 'listening') raf = requestAnimationFrame(tick);
+    return () => {
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [state.phase]);
+
+  const pct = Math.max(0, Math.min(100, (smoothRemaining / clipTotal) * 100));
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-md flex-col gap-6 px-4 py-8">
-      <header className="flex items-center justify-between text-sm text-white/60">
-        <span>{me?.name}</span>
-        <span>
-          Manche {state.track?.index ?? 0}/{state.track?.total ?? 0} · {displayedScore} pts
-        </span>
+    <div className="mx-auto flex min-h-screen max-w-md flex-col gap-5 px-4 py-6">
+      <header className="flex items-center justify-between text-sm text-white/70">
+        <span className="font-semibold">{me?.name}</span>
+        <div className="flex items-center gap-3">
+          {state.settings.audioPlayersEnabled && onVolumeChange && (
+            <VolumeControl volume={volume} onVolumeChange={onVolumeChange} />
+          )}
+          <span className="rounded-full bg-white/10 px-2.5 py-1 text-xs font-bold text-accent">
+            Manche {state.track?.index ?? 0}/{state.track?.total ?? 0} · {displayedScore} pts
+          </span>
+        </div>
       </header>
 
-      <button
-        onClick={onBuzz}
-        disabled={!canBuzz}
-        className={`buzzer relative isolate aspect-square w-full overflow-hidden rounded-full text-4xl font-black uppercase tracking-widest transition active:scale-95 disabled:active:scale-100 ${phaseClass} ${
-          flash ? 'ring-8 ring-white' : ''
-        }`}
-      >
-        {(state.phase === 'listening' || state.phase === 'buzzed') && (
-          <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet" aria-hidden style={{ zIndex: 0, position: 'absolute', left: 0, top: 0 }}>
-            <defs>
-              <linearGradient id="g1" x1="0%" x2="100%">
-                <stop offset="0%" stopColor="#7c5cff" />
-                <stop offset="100%" stopColor="#ff2e88" />
-              </linearGradient>
-            </defs>
-            <circle cx="50" cy="50" r="44" fill="rgba(255,255,255,0.04)" />
-            <circle
-              cx="50"
-              cy="50"
-              r="44"
-              fill="none"
-              stroke="url(#g1)"
-              strokeWidth="12"
-              strokeLinecap="round"
-              strokeDasharray={Math.PI * 2 * 44}
-              style={{ transform: 'rotate(-90deg)', transformOrigin: '50% 50%', strokeDashoffset: Math.PI * 2 * 44 * (1 - pct / 100), transition: 'stroke-dashoffset 120ms linear' }}
-            />
-          </svg>
-        )}
-        {state.phase !== 'reveal' && (
-          <>
-            <span aria-hidden className="buzzer-ring buzzer-ring-one" />
-            <span aria-hidden className="buzzer-ring buzzer-ring-two" />
-            <span aria-hidden className="buzzer-ring buzzer-ring-three" />
-          </>
-        )}
-
-        {state.phase === 'reveal' && hasCover ? (
-          <img
-            src={state.answer?.cover ?? undefined}
-            alt=""
-            className="absolute inset-0 h-full w-full rounded-full object-cover"
-            onError={() => setCoverFailed(true)}
-          />
-        ) : state.phase === 'reveal' ? (
-          <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-accent/80 to-neon/70 text-7xl">
-            🎵
+      {/* MODE COURSE : Saisie directe sans buzzer inutile */}
+      {isCourse && state.phase === 'listening' ? (
+        <div className="card space-y-4 text-center">
+          <div className="flex items-center justify-between text-xs font-semibold text-white/50">
+            <span>Course contre la montre</span>
+            <span>{Math.ceil(smoothRemaining)}s</span>
           </div>
-        ) : null}
 
-        {/* Keeps the answer readable on top of a bright cover. */}
-        {state.phase === 'reveal' && <span className="absolute inset-0 bg-black/55" />}
-        <span className="relative z-10 flex h-full flex-col items-center justify-center gap-3 px-8 text-center">
-          {state.phase === 'countdown' && 'Prêt…'}
-          {state.phase === 'listening' &&
-            (me?.lockedOut
-              ? 'Éliminé'
-              : iAnswered
-                ? 'Envoyé ✓'
-                : iRace
-                  ? 'À toi !'
-                  : 'BUZZ')}
-          {state.phase === 'buzzed' && (
+          <div className="h-2 w-full overflow-hidden rounded-full bg-white/10">
+            <div
+              className="h-full bg-gradient-to-r from-accent to-neon"
+              style={{ width: `${pct}%`, transition: 'width 100ms linear' }}
+            />
+          </div>
+
+          {answeredNames.length > 0 && (
+            <p className="text-xs text-neon">
+              {answeredNames.join(', ')} {answeredNames.length > 1 ? 'ont' : 'a'} déjà répondu !
+            </p>
+          )}
+
+          {me?.lockedOut ? (
+            <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-6">
+              <p className="text-xl font-bold text-rose-300">Éliminé pour cette manche</p>
+              <p className="mt-1 text-sm text-white/50">Mauvaise réponse. Attends la manche suivante !</p>
+            </div>
+          ) : iAnswered ? (
+            <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-6">
+              <p className="text-2xl font-bold text-emerald-300">Réponse envoyée ✓</p>
+              <p className="mt-1 text-sm text-white/60">En attente de la fin de l’extrait…</p>
+            </div>
+          ) : (
+            <AnswerForm
+              className="space-y-3 text-left"
+              hint="Tape vite : 3 pts si <10s, 2 pts si <20s, 1 pt ensuite"
+              title={answerTitle}
+              artist={answerArtist}
+              onTitle={setAnswerTitle}
+              onArtist={setAnswerArtist}
+              onSubmit={() => onSubmitAnswer({ title: answerTitle, artist: answerArtist })}
+            />
+          )}
+        </div>
+      ) : (
+        /* MODE STANDARD OU COURSE EN REVEAL / COUNTDOWN */
+        <button
+          onClick={onBuzz}
+          disabled={!canBuzz || isCourse}
+          className={`buzzer relative isolate aspect-square w-full overflow-hidden rounded-full text-4xl font-black uppercase tracking-widest transition active:scale-95 disabled:active:scale-100 ${phaseClass} ${
+            flash ? 'ring-8 ring-white' : ''
+          }`}
+        >
+          {(state.phase === 'listening' || state.phase === 'buzzed') && (
+            <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet" aria-hidden style={{ zIndex: 0, position: 'absolute', left: 0, top: 0 }}>
+              <defs>
+                <linearGradient id="g1" x1="0%" x2="100%">
+                  <stop offset="0%" stopColor="#7c5cff" />
+                  <stop offset="100%" stopColor="#ff2e88" />
+                </linearGradient>
+              </defs>
+              <circle cx="50" cy="50" r="44" fill="url(#g1)" fillOpacity={0.18} />
+
+              {(() => {
+                const rInner = 44;
+                const circumference = Math.PI * 2 * rInner;
+                const dashOffset = circumference * (pct / 100);
+                return (
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r={rInner}
+                    fill="none"
+                    stroke="#2b2b2b"
+                    strokeWidth={rInner * 2}
+                    strokeLinecap="butt"
+                    strokeDasharray={circumference}
+                    style={{ transform: 'rotate(-90deg)', transformOrigin: '50% 50%', strokeDashoffset: dashOffset, transition: 'stroke-dashoffset 100ms linear', willChange: 'stroke-dashoffset' }}
+                  />
+                );
+              })()}
+            </svg>
+          )}
+          {state.phase !== 'reveal' && (
             <>
-              {iBuzzed ? (
-                <>
-                  <span className="text-4xl">À toi !</span>
-                  <span className="buzzer-avatar">{me?.name.trim().charAt(0).toUpperCase()}</span>
-                </>
-              ) : (
-                <>
-                  <span className="buzzer-avatar text-3xl">{buzzerInitial}</span>
-                  <span className="max-w-full break-words text-3xl leading-tight">{buzzer?.name ?? 'Quelqu’un'}</span>
-                  <span className="text-base font-semibold normal-case tracking-normal text-white/70">
-                    {state.settings.mode === 'teams' ? buzzerTeam?.score ?? 0 : buzzer?.score ?? 0} pts
-                  </span>
-                  {state.settings.mode === 'teams' && buzzerTeam && (
-                    <span className="text-sm font-semibold normal-case tracking-normal text-white/65">
-                      Équipe {buzzerTeam.name}
+              <span aria-hidden className="buzzer-ring buzzer-ring-one" />
+              <span aria-hidden className="buzzer-ring buzzer-ring-two" />
+              <span aria-hidden className="buzzer-ring buzzer-ring-three" />
+            </>
+          )}
+
+          {state.phase === 'reveal' && hasCover ? (
+            <img
+              src={state.answer?.cover ?? undefined}
+              alt=""
+              className="absolute inset-0 h-full w-full rounded-full object-cover"
+              onError={() => setCoverFailed(true)}
+            />
+          ) : state.phase === 'reveal' ? (
+            <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-accent/80 to-neon/70 text-7xl">
+              🎵
+            </div>
+          ) : null}
+
+          {state.phase === 'reveal' && <span className="absolute inset-0 bg-black/55" />}
+          <span className="relative z-10 flex h-full flex-col items-center justify-center gap-3 px-8 text-center">
+            {state.phase === 'countdown' && 'Prêt…'}
+            {state.phase === 'listening' &&
+              (me?.lockedOut
+                ? 'Éliminé'
+                : iAnswered
+                  ? 'Envoyé ✓'
+                  : iRace
+                    ? 'À toi !'
+                    : 'BUZZ')}
+            {state.phase === 'buzzed' && (
+              <>
+                {iBuzzed ? (
+                  <>
+                    <span className="text-4xl">À toi !</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="max-w-full break-words text-3xl leading-tight">{buzzer?.name ?? 'Quelqu’un'}</span>
+                    <span className="text-base font-semibold normal-case tracking-normal text-white/70">
+                      {state.settings.mode === 'teams' ? buzzerTeam?.score ?? 0 : buzzer?.score ?? 0} pts
                     </span>
-                  )}
-                </>
-              )}
-            </>
-          )}
-          {state.phase === 'reveal' && (
-            <>
-              <span className="text-2xl normal-case tracking-normal">{state.answer?.title ?? 'Réponse'}</span>
-              {state.answer?.artist && (
-                <span className="text-base font-medium normal-case tracking-normal text-white/75">
-                  {state.answer.artist}
-                </span>
-              )}
-              {revealDelta > 0 && <span className="buzzer-points">+{revealDelta}</span>}
-            </>
-          )}
+                    {state.settings.mode === 'teams' && buzzerTeam && (
+                      <span className="text-sm font-semibold normal-case tracking-normal text-white/65">
+                        Équipe {buzzerTeam.name}
+                      </span>
+                    )}
+                  </>
+                )}
+              </>
+            )}
+            {state.phase === 'reveal' && (
+              <>
+                <span className="text-2xl normal-case tracking-normal">{state.answer?.title ?? 'Réponse'}</span>
+                {state.answer?.artist && (
+                  <span className="text-base font-medium normal-case tracking-normal text-white/75">
+                    {state.answer.artist}
+                  </span>
+                )}
+                {revealDelta > 0 && <span className="buzzer-points">+{revealDelta}</span>}
+              </>
+            )}
             {(state.submittedAnswer && state.answerVerdict && state.phase === 'buzzed') && (
               <div className="absolute bottom-6 left-1/2 z-20 w-11/12 -translate-x-1/2 rounded-xl bg-black/60 p-3 text-left text-sm animate-fade-in">
                 <div className="flex items-center justify-between">
@@ -209,10 +302,12 @@ export default function PlayerGame({ state, playerId, onBuzz, onSubmitAnswer }: 
                 </div>
               </div>
             )}
-        </span>
-      </button>
+          </span>
+        </button>
+      )}
 
-      {canSubmit && (
+      {/* FORMULAIRE BUZZ CLASSIQUE (Hors course) */}
+      {!isCourse && canSubmit && (
         <AnswerForm
           className="card space-y-3 text-left"
           hint={`Un seul champ suffit · ${remainingResponseSeconds}s restantes`}
@@ -224,18 +319,59 @@ export default function PlayerGame({ state, playerId, onBuzz, onSubmitAnswer }: 
         />
       )}
 
-      {isCourse && state.phase === 'reveal' && myRace && (
-        <section className="card text-left text-sm">
-          <h3 className="font-bold">Ta réponse</h3>
-          <p className="mt-2 text-white/70">
-            Titre : {myRace.title || 'non renseigné'} {myRace.title && (myRace.verdict.title ? '✓' : '✗')}
-          </p>
-          <p className="text-white/70">
-            Artiste : {myRace.artist || 'non renseigné'} {myRace.artist && (myRace.verdict.artist ? '✓' : '✗')}
-          </p>
-          <p className="mt-2 font-semibold text-accent">
-            Buzz à {myRace.seconds}s · {myRace.points} pt{myRace.points > 1 ? 's' : ''}
-          </p>
+      {/* RÉCAPITULATIF MODE COURSE EN REVEAL (TOUTES LES RÉPONSES DES JOUEURS) */}
+      {isCourse && state.phase === 'reveal' && (
+        <section className="card space-y-3 text-left text-sm">
+          <h3 className="font-bold text-neon">🏁 Réponses de la manche</h3>
+          {state.raceAnswers.length > 0 ? (
+            state.raceAnswers.map((race) => {
+              const isMe = race.playerId === playerId;
+              return (
+                <div
+                  key={race.playerId}
+                  className={`rounded-xl p-3 transition ${
+                    isMe ? 'border border-neon/40 bg-neon/15' : 'bg-white/5'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-bold">
+                      {race.name} {isMe && <span className="text-xs text-neon">(Toi)</span>}
+                    </span>
+                    <span className="text-xs text-white/60">
+                      buzz à {race.seconds}s ·{' '}
+                      <span className={race.points > 0 ? 'font-bold text-accent' : 'text-white/40'}>
+                        {race.points > 0 ? `+${race.points}` : '0'} pt{race.points > 1 ? 's' : ''}
+                      </span>
+                    </span>
+                  </div>
+
+                  <div className="mt-2 space-y-1 text-xs">
+                    {race.title && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-white/70">Titre : {race.title}</span>
+                        <span className={race.verdict.title ? 'text-emerald-300 font-bold' : 'text-rose-400'}>
+                          {race.verdict.title ? '✓' : '✗'}
+                        </span>
+                      </div>
+                    )}
+                    {race.artist && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-white/70">Artiste : {race.artist}</span>
+                        <span className={race.verdict.artist ? 'text-emerald-300 font-bold' : 'text-rose-400'}>
+                          {race.verdict.artist ? '✓' : '✗'}
+                        </span>
+                      </div>
+                    )}
+                    {!race.title && !race.artist && (
+                      <span className="text-white/40 italic">Aucune réponse renseignée</span>
+                    )}
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            <p className="text-white/50 text-xs">Personne n'a répondu à cette manche.</p>
+          )}
         </section>
       )}
 

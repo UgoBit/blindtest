@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { Player, RoomState, Theme } from '../../../shared/types';
-import { DIFFICULTIES } from '../../../shared/types';
+import { DECADES_LIST, DIFFICULTIES, GENRES_LIST } from '../../../shared/types';
 import QrJoin from '../components/QrJoin';
 
 interface Props {
@@ -57,8 +57,14 @@ export default function Lobby({
   const unassignedPlayers = assignablePlayers.filter((player) => !player.team || player.team > teamCount);
   const populatedTeams = teams.filter((team) => team.members.length > 0).length;
   const teamBuzzers = guests.length + (settings.hostPlays ? 1 : 0);
+
+  const selectedDecadesCount = settings.yearRanges?.length ?? 0;
+  const selectedGenresCount = settings.genres?.length ?? 0;
+  const selectedThemesCount = settings.themes.length;
+  const totalMusicSelected = selectedDecadesCount + selectedGenresCount + selectedThemesCount;
+
   const canStart =
-    settings.themes.length > 0 &&
+    totalMusicSelected > 0 &&
     (mode === 'solo'
       ? true
       : mode === 'teams'
@@ -74,6 +80,30 @@ export default function Lobby({
   useEffect(() => {
     setTeamDrafts(teamNamesKey.split('\u0000'));
   }, [teamNamesKey]);
+
+  const toggleDecade = (id: string) => {
+    const current = settings.yearRanges ?? [];
+    const next = current.includes(id) ? current.filter((y) => y !== id) : [...current, id];
+    onUpdate({ yearRanges: next });
+  };
+
+  const selectAllDecades = () => {
+    const allIds = DECADES_LIST.map((d) => d.id);
+    const areAllSelected = allIds.every((id) => settings.yearRanges?.includes(id));
+    onUpdate({ yearRanges: areAllSelected ? [] : allIds });
+  };
+
+  const toggleGenre = (id: string) => {
+    const current = settings.genres ?? [];
+    const next = current.includes(id) ? current.filter((g) => g !== id) : [...current, id];
+    onUpdate({ genres: next });
+  };
+
+  const selectAllGenres = () => {
+    const allIds = GENRES_LIST.map((g) => g.id);
+    const areAllSelected = allIds.every((id) => settings.genres?.includes(id));
+    onUpdate({ genres: areAllSelected ? [] : allIds });
+  };
 
   const toggleTheme = (id: string) => {
     const next = settings.themes.includes(id)
@@ -118,6 +148,8 @@ export default function Lobby({
     setSelectedPlayerId(null);
   };
 
+  const cultureThemes = themes.filter((t) => t.category === 'culture');
+
   if (!isHost) {
     if (mode === 'teams') {
       const currentPlayer = players.find((player) => player.id === currentPlayerId);
@@ -127,7 +159,7 @@ export default function Lobby({
           <div>
             <h2 className="text-2xl font-bold">En attente du lancement…</h2>
             <p className="mt-2 text-white/60">
-              {settings.themes.length} thèmes · {settings.rounds} manches · niveau {settings.difficulty}
+              {totalMusicSelected} sélection{totalMusicSelected > 1 ? 's' : ''} · {settings.rounds} manches · niveau {settings.difficulty}
             </p>
           </div>
           <section className="card w-full text-left">
@@ -163,7 +195,7 @@ export default function Lobby({
         <div className="h-16 w-16 animate-pulse rounded-full bg-gradient-to-r from-accent to-neon" />
         <h2 className="text-2xl font-bold">En attente du lancement…</h2>
         <p className="text-white/60">
-          {settings.themes.length} thèmes · {settings.rounds} manches · niveau {settings.difficulty}
+          {totalMusicSelected} sélection{totalMusicSelected > 1 ? 's' : ''} · {settings.rounds} manches · niveau {settings.difficulty}
         </p>
         <ul className="flex flex-wrap justify-center gap-2">
           {guests.map((player) => (
@@ -179,57 +211,125 @@ export default function Lobby({
   return (
     <div className="mx-auto grid max-w-6xl gap-6 px-4 py-8 lg:grid-cols-[1fr_320px]">
       <div className="space-y-6">
+        {/* Époques / Décennies */}
         <section className="card">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h2 className="text-xl font-bold">Thèmes</h2>
-              <p className="mt-1 text-sm text-white/60">Choisis un ou plusieurs thèmes pour la partie.</p>
+              <h2 className="text-xl font-bold">📅 Époques & Décennies</h2>
+              <p className="mt-1 text-sm text-white/60">Choisis une ou plusieurs décennies musicales.</p>
             </div>
             <button
               type="button"
-              onClick={() => onUpdate({ themes: [] })}
-              disabled={settings.themes.length === 0}
-              className="btn-ghost px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-40"
+              onClick={selectAllDecades}
+              className="btn-ghost px-3 py-1.5 text-xs"
             >
-              Tout désélectionner
+              {DECADES_LIST.every((d) => settings.yearRanges?.includes(d.id)) ? 'Tout désélectionner' : 'Tout sélectionner'}
             </button>
           </div>
-          <p className="mt-3 text-sm font-semibold text-neon">
-            {settings.themes.length} thème{settings.themes.length > 1 ? 's' : ''} sélectionné
-            {settings.themes.length > 1 ? 's' : ''}
-          </p>
-          <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            {themes.map((theme) => {
-              const active = settings.themes.includes(theme.id);
+          <div className="mt-4 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
+            {DECADES_LIST.map((dec) => {
+              const active = settings.yearRanges?.includes(dec.id);
               return (
                 <button
-                  key={theme.id}
+                  key={dec.id}
                   type="button"
-                  onClick={() => toggleTheme(theme.id)}
+                  onClick={() => toggleDecade(dec.id)}
                   aria-pressed={active}
-                  className={`flex items-center gap-3 rounded-xl border px-3 py-3 text-left text-sm transition ${
+                  className={`flex items-center gap-3 rounded-xl border px-3.5 py-3 text-left transition ${
                     active
-                      ? 'border-neon bg-neon/20 text-white'
-                      : 'border-white/10 bg-white/5 text-white/70 hover:bg-white/10'
+                      ? 'border-neon bg-neon/20 text-white shadow-glow'
+                      : 'border-white/10 bg-white/5 text-white/70 hover:border-white/20 hover:bg-white/10'
                   }`}
                 >
-                  <span
-                    aria-hidden="true"
-                    className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border text-xs font-bold ${
-                      active ? 'border-neon bg-neon text-slate-950' : 'border-white/25 text-transparent'
-                    }`}
-                  >
-                    ✓
-                  </span>
-                  <span className="min-w-0">
-                    <span className="mr-1">{theme.emoji}</span>
-                    {theme.label}
-                  </span>
+                  <span className="text-2xl">{dec.emoji}</span>
+                  <div className="min-w-0">
+                    <span className="block font-bold leading-tight">{dec.label}</span>
+                    <span className="block text-xs text-white/50">{dec.years}</span>
+                  </div>
                 </button>
               );
             })}
           </div>
         </section>
+
+        {/* Styles musicaux */}
+        <section className="card">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-bold">🎸 Styles musicaux</h2>
+              <p className="mt-1 text-sm text-white/60">Choisis un ou plusieurs genres.</p>
+            </div>
+            <button
+              type="button"
+              onClick={selectAllGenres}
+              className="btn-ghost px-3 py-1.5 text-xs"
+            >
+              {GENRES_LIST.every((g) => settings.genres?.includes(g.id)) ? 'Tout désélectionner' : 'Tout sélectionner'}
+            </button>
+          </div>
+          <div className="mt-4 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+            {GENRES_LIST.map((g) => {
+              const active = settings.genres?.includes(g.id);
+              return (
+                <button
+                  key={g.id}
+                  type="button"
+                  onClick={() => toggleGenre(g.id)}
+                  aria-pressed={active}
+                  className={`flex items-center gap-3 rounded-xl border px-3.5 py-3 text-left text-sm transition ${
+                    active
+                      ? 'border-neon bg-neon/20 text-white shadow-glow'
+                      : 'border-white/10 bg-white/5 text-white/70 hover:border-white/20 hover:bg-white/10'
+                  }`}
+                >
+                  <span className="text-2xl">{g.emoji}</span>
+                  <span className="font-semibold">{g.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* Thèmes cultes */}
+        {cultureThemes.length > 0 && (
+          <section className="card">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="text-xl font-bold">🎬 Thèmes cultes</h2>
+                <p className="mt-1 text-sm text-white/60">Bandes originales, cinéma, jeux vidéo, pubs…</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => onUpdate({ themes: [] })}
+                disabled={settings.themes.length === 0}
+                className="btn-ghost px-3 py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Désélectionner
+              </button>
+            </div>
+            <div className="mt-4 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+              {cultureThemes.map((theme) => {
+                const active = settings.themes.includes(theme.id);
+                return (
+                  <button
+                    key={theme.id}
+                    type="button"
+                    onClick={() => toggleTheme(theme.id)}
+                    aria-pressed={active}
+                    className={`flex items-center gap-3 rounded-xl border px-3.5 py-3 text-left text-sm transition ${
+                      active
+                        ? 'border-neon bg-neon/20 text-white shadow-glow'
+                        : 'border-white/10 bg-white/5 text-white/70 hover:border-white/20 hover:bg-white/10'
+                    }`}
+                  >
+                    <span className="text-2xl">{theme.emoji}</span>
+                    <span className="font-semibold">{theme.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
         <section className="card">
           <h2 className="mb-3 text-xl font-bold">Niveau</h2>
@@ -567,18 +667,18 @@ export default function Lobby({
         <button className="btn-primary w-full text-lg" disabled={!canStart} onClick={onStart}>
           {canStart
             ? `Lancer la partie (${mode === 'solo' ? '1 joueur' : `${teamBuzzers} buzzer${teamBuzzers > 1 ? 's' : ''}`})`
-            : settings.themes.length === 0
-              ? 'Choisissez au moins un thème'
+            : totalMusicSelected === 0
+              ? 'Choisissez au moins une époque, un style ou un thème'
             : mode === 'teams'
               ? 'Répartissez les joueurs dans au moins 2 équipes'
               : 'En attente de joueurs…'}
         </button>
-        {!canStart && settings.themes.length === 0 && (
+        {!canStart && totalMusicSelected === 0 && (
           <p className="text-center text-sm text-white/50">
-            Sélectionnez au moins un thème avant de lancer la partie.
+            Sélectionnez au moins une époque, un style musical ou un thème avant de lancer la partie.
           </p>
         )}
-        {mode === 'teams' && !canStart && settings.themes.length > 0 && (
+        {mode === 'teams' && !canStart && totalMusicSelected > 0 && (
           <p className="text-center text-sm text-white/50">
             Au moins deux équipes doivent avoir un membre avant de lancer.
           </p>

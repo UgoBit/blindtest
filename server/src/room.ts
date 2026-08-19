@@ -356,17 +356,22 @@ export class Room {
 
   async start(): Promise<void> {
     if (this.phase !== 'lobby') return;
-    if (this.settings.themes.length === 0) {
-      this.io.to(this.code).emit('error_message', 'Choisissez au moins un thème avant de lancer la partie.');
+    const hasSelection =
+      this.settings.themes.length > 0 ||
+      (this.settings.yearRanges && this.settings.yearRanges.length > 0) ||
+      (this.settings.genres && this.settings.genres.length > 0);
+    if (!hasSelection) {
+      this.io.to(this.code).emit('error_message', 'Choisissez au moins un thème, une époque ou un style musical.');
       return;
     }
     this.playlist = await buildPlaylist(
       this.settings.themes,
       this.settings.rounds,
       this.settings.difficulty,
+      { yearRanges: this.settings.yearRanges ?? [], genres: this.settings.genres ?? [] },
     );
     if (this.playlist.length === 0) {
-      this.io.to(this.code).emit('error_message', "Impossible de charger des extraits pour ces thèmes.");
+      this.io.to(this.code).emit('error_message', "Impossible de charger des extraits pour cette sélection.");
       return;
     }
     for (const member of this.players.values()) member.score = 0;
@@ -379,6 +384,7 @@ export class Room {
     this.emitAudio('stop');
     this.clearTimer();
     this.clearResponseTimer();
+    this.clearFeedbackTimer();
     this.buzzedBy = null;
     this.awarded = { title: false, artist: false };
     this.submittedAnswer = null;
@@ -476,11 +482,14 @@ export class Room {
 
   private submitRaceAnswer(playerId: string, answer: { title: string; artist: string }): void {
     if (this.phase !== 'listening') return;
-    const seconds = this.racers.get(playerId);
-    if (seconds === undefined) return;
+    let seconds = this.racers.get(playerId);
+    if (seconds === undefined) {
+      seconds = this.elapsedSeconds();
+    }
     this.racers.delete(playerId);
     const member = this.players.get(playerId);
-    if (!member) return;
+    if (!member || member.lockedOut) return;
+    if (this.raceAnswers.some((a) => a.playerId === playerId)) return;
 
     const clean = this.cleanAnswer(answer);
     const verdict = this.judgeAnswer(clean);
@@ -569,7 +578,7 @@ export class Room {
     this.phase = 'buzzed';
     this.broadcast();
 
-    const feedbackMs = 1200;
+    const feedbackMs = 5000;
     this.feedbackTimer = setTimeout(() => {
       this.clearFeedbackTimer();
       // Clear the buzzedBy marker now so subsequent state doesn't show a buzzer
@@ -642,8 +651,10 @@ export class Room {
   }
 
   restart(): void {
+    this.emitAudio('stop');
     this.clearTimer();
     this.clearResponseTimer();
+    this.clearFeedbackTimer();
     this.phase = 'lobby';
     this.round = -1;
     this.playlist = [];

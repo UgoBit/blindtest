@@ -29,11 +29,37 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [autoplayBlocked, setAutoplayBlocked] = useState(false);
   const [roomClosedOpen, setRoomClosedOpen] = useState(false);
-  const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
-  const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
-  const debug = params.get('debug') === '1' || hostname === 'localhost' || hostname === '127.0.0.1';
+  const [volume, setVolume] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('blindtest_volume');
+      return saved !== null ? parseFloat(saved) : 0.8;
+    } catch {
+      return 0.8;
+    }
+  });
+  // Debug UI removed for production testing — enable with ?debug=1 if needed
+  const debug = false;
   const [audioEvent, setAudioEvent] = useState<{ action: string; at: number | null } | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const handleVolumeChange = useCallback((newVol: number) => {
+    const clamped = Math.max(0, Math.min(1, newVol));
+    setVolume(clamped);
+    if (audioRef.current) {
+      audioRef.current.volume = clamped;
+    }
+    try {
+      localStorage.setItem('blindtest_volume', String(clamped));
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.volume = volume;
+    }
+  }, [volume]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -60,6 +86,7 @@ export default function App() {
   const playAudio = useCallback(() => {
     const audio = audioRef.current;
     if (!audio) return;
+    audio.volume = volume;
     void audio
       .play()
       .then(() => setAutoplayBlocked(false))
@@ -68,7 +95,7 @@ export default function App() {
         if (isAutoplayBlocked(reason)) setAutoplayBlocked(true);
         else socket.emit('preview_failed');
       });
-  }, []);
+  }, [volume]);
 
   useEffect(() => {
     const onState = (next: RoomState) => setState(next);
@@ -148,10 +175,11 @@ export default function App() {
     };
     audio.addEventListener('loadedmetadata', seek, { once: true });
     audio.src = audioTrack.previewUrl;
+    audio.volume = volume;
     audio.load();
     if (audio.readyState >= HTMLMediaElement.HAVE_METADATA) seek();
     return () => audio.removeEventListener('loadedmetadata', seek);
-  }, [isHost, playerTrack, track]);
+  }, [isHost, playerTrack, track, volume]);
 
   const lastResyncRound = useRef<number | null>(null);
   useEffect(() => {
@@ -181,6 +209,8 @@ export default function App() {
       audioHostEnabled: true,
       audioPlayersEnabled: false,
       buzzerEnabled: true,
+      yearRanges: ['80s', '90s', '2000s'],
+      genres: [],
     };
     socket.emit('create_room', settings, (res) => {
       if (!res.ok) {
@@ -239,9 +269,9 @@ export default function App() {
           window.history.replaceState(null, '', '/');
         }}
       />
-      <div className="mx-auto max-w-6xl px-4 py-4">
+      <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
         <button
-          className="btn-ghost"
+          className="btn-ghost text-xs text-white/70 hover:text-white"
           onClick={() => {
             clearSession();
             setState(null);
@@ -249,8 +279,11 @@ export default function App() {
             window.history.replaceState(null, '', '/');
           }}
         >
-          Accueil
+          ← Quitter la session
         </button>
+        <span className="text-xs font-semibold uppercase tracking-widest text-white/40">
+          Code salon : <span className="text-neon">{state.code}</span>
+        </span>
       </div>
       {shouldPlayAudio && (
         <audio
@@ -299,17 +332,15 @@ export default function App() {
           <>
             <HostGame
               state={state}
+              volume={volume}
+              onVolumeChange={handleVolumeChange}
               onCorrectAnswer={(field, target) => socket.emit('correct_answer', { field, playerId: target })}
               canSubmitAnswer={state.buzzedBy === playerId || hostRacing}
               onSubmitAnswer={(answer) => socket.emit('submit_answer', answer)}
               onSkip={() => socket.emit('skip')}
               onNext={() => socket.emit('next_round')}
               onCancel={() => {
-                socket.emit('close_room');
-                clearSession();
-                setState(null);
-                setPlayerId(null);
-                window.history.replaceState(null, '', '/');
+                socket.emit('restart');
               }}
             />
             {hostPlaying && (
@@ -341,6 +372,8 @@ export default function App() {
           <PlayerGame
             state={state}
             playerId={playerId}
+            volume={volume}
+            onVolumeChange={handleVolumeChange}
             onBuzz={() => socket.emit('buzz')}
             onSubmitAnswer={(answer) => socket.emit('submit_answer', answer)}
           />

@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import type { RoomState } from '../../../shared/types';
 import Scores from '../components/Scores';
 import ConfirmModal from '../components/ConfirmModal';
 import AnswerForm from '../components/AnswerForm';
+import VolumeControl from '../components/VolumeControl';
 
 interface Props {
   state: RoomState;
@@ -12,6 +13,8 @@ interface Props {
   onSkip: () => void;
   onNext: () => void;
   onCancel: () => void;
+  volume?: number;
+  onVolumeChange?: (v: number) => void;
 }
 
 export default function HostGame({
@@ -22,10 +25,11 @@ export default function HostGame({
   onSkip,
   onNext,
   onCancel,
+  volume = 0.8,
+  onVolumeChange,
 }: Props) {
-  const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
-  const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
-  const debug = params.get('debug') === '1' || hostname === 'localhost' || hostname === '127.0.0.1';
+  // Debug UI removed — hidden in normal runs
+  const debug = false;
   const buzzer = state.players.find((player) => player.id === state.buzzedBy) ?? null;
   const buzzerTeam = buzzer?.team
     ? state.teamScores.find((team) => team.team === buzzer.team)
@@ -42,7 +46,33 @@ export default function HostGame({
   const [remainingResponseSeconds, setRemainingResponseSeconds] = useState(0);
 
   const clipTotal = state.settings.clipSeconds ?? 30;
-  const pct = Math.max(0, Math.min(100, (state.remainingSeconds / clipTotal) * 100));
+  // Smooth local interpolation of remaining seconds to avoid visible ticks.
+  const [smoothRemaining, setSmoothRemaining] = useState<number>(state.remainingSeconds);
+  const lastServerAt = useRef<number>(Date.now());
+  const lastServerRemaining = useRef<number>(state.remainingSeconds);
+
+  useEffect(() => {
+    lastServerAt.current = Date.now();
+    lastServerRemaining.current = state.remainingSeconds;
+    setSmoothRemaining(state.remainingSeconds);
+  }, [state.remainingSeconds]);
+
+  useEffect(() => {
+    let raf = 0;
+    const tick = () => {
+      if (state.phase !== 'listening') return;
+      const elapsed = (Date.now() - lastServerAt.current) / 1000;
+      const next = Math.max(0, lastServerRemaining.current - elapsed);
+      setSmoothRemaining(next);
+      raf = requestAnimationFrame(tick);
+    };
+    if (state.phase === 'listening') raf = requestAnimationFrame(tick);
+    return () => {
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [state.phase]);
+
+  const pct = Math.max(0, Math.min(100, (smoothRemaining / clipTotal) * 100));
 
   useEffect(() => {
     if (!state.responseDeadline) {
@@ -65,9 +95,14 @@ export default function HostGame({
   return (
     <div className="mx-auto grid max-w-6xl gap-6 px-4 py-8 lg:grid-cols-[1fr_300px]">
       <div className="card flex min-h-[420px] flex-col items-center justify-center gap-6 text-center">
-        <p className="text-sm uppercase tracking-widest text-white/40">
-          Manche {state.track?.index ?? 0} / {state.track?.total ?? 0}
-        </p>
+        <div className="flex w-full items-center justify-between px-2">
+          <p className="text-sm font-semibold uppercase tracking-widest text-white/50">
+            Manche {state.track?.index ?? 0} / {state.track?.total ?? 0}
+          </p>
+          {onVolumeChange && (
+            <VolumeControl volume={volume} onVolumeChange={onVolumeChange} />
+          )}
+        </div>
 
         {state.phase === 'countdown' && (
           <p className="animate-pulse text-5xl font-black">Préparez-vous…</p>
@@ -264,14 +299,14 @@ export default function HostGame({
         )}
         <div className="mt-4">
           <>
-            <button className="btn bg-red-600 w-full" onClick={() => setConfirmOpen(true)}>
-              Annuler la partie
+            <button className="btn bg-red-600/80 hover:bg-red-600 w-full" onClick={() => setConfirmOpen(true)}>
+              Arrêter et revenir au salon
             </button>
             <ConfirmModal
               open={confirmOpen}
-              title="Annuler la partie"
-              description="Tous les joueurs seront déconnectés et la partie sera supprimée."
-              confirmLabel="Annuler la partie"
+              title="Interrompre la partie"
+              description="La partie sera interrompue et tous les joueurs reviendront dans le salon d'attente."
+              confirmLabel="Revenir au salon"
               onConfirm={() => {
                 setConfirmOpen(false);
                 onCancel();
