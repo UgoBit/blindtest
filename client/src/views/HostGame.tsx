@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import type { RoomState } from '../../../shared/types';
 import Scores from '../components/Scores';
 import ConfirmModal from '../components/ConfirmModal';
@@ -23,8 +23,6 @@ export default function HostGame({
   onNext,
   onCancel,
 }: Props) {
-  // Debug UI removed — hidden in normal runs
-  const debug = false;
   const buzzer = state.players.find((player) => player.id === state.buzzedBy) ?? null;
   const buzzerTeam = buzzer?.team
     ? state.teamScores.find((team) => team.team === buzzer.team)
@@ -41,31 +39,29 @@ export default function HostGame({
   const [remainingResponseSeconds, setRemainingResponseSeconds] = useState(0);
 
   const clipTotal = state.settings.clipSeconds ?? 30;
-  // Smooth local interpolation of remaining seconds to avoid visible ticks.
+
+  // Exact timestamp-based smooth remaining seconds
   const [smoothRemaining, setSmoothRemaining] = useState<number>(state.remainingSeconds);
-  const lastServerAt = useRef<number>(Date.now());
-  const lastServerRemaining = useRef<number>(state.remainingSeconds);
 
   useEffect(() => {
-    lastServerAt.current = Date.now();
-    lastServerRemaining.current = state.remainingSeconds;
-    setSmoothRemaining(state.remainingSeconds);
-  }, [state.remainingSeconds]);
-
-  useEffect(() => {
+    if (state.phase !== 'listening') {
+      setSmoothRemaining(
+        state.phase === 'buzzed' ? state.remainingSeconds : state.phase === 'countdown' ? clipTotal : 0,
+      );
+      return;
+    }
     let raf = 0;
     const tick = () => {
-      if (state.phase !== 'listening') return;
-      const elapsed = (Date.now() - lastServerAt.current) / 1000;
-      const next = Math.max(0, lastServerRemaining.current - elapsed);
-      setSmoothRemaining(next);
+      if (state.phase !== 'listening' || !state.clipEndsAt) return;
+      const remaining = Math.max(0, (state.clipEndsAt - Date.now()) / 1000);
+      setSmoothRemaining(remaining);
       raf = requestAnimationFrame(tick);
     };
-    if (state.phase === 'listening') raf = requestAnimationFrame(tick);
+    raf = requestAnimationFrame(tick);
     return () => {
       if (raf) cancelAnimationFrame(raf);
     };
-  }, [state.phase]);
+  }, [state.phase, state.clipEndsAt, state.remainingSeconds, clipTotal]);
 
   const pct = Math.max(0, Math.min(100, (smoothRemaining / clipTotal) * 100));
 
@@ -74,18 +70,29 @@ export default function HostGame({
       setRemainingResponseSeconds(0);
       return;
     }
-    const update = () => setRemainingResponseSeconds(Math.max(0, Math.ceil((state.responseDeadline! - Date.now()) / 1000)));
+    const update = () =>
+      setRemainingResponseSeconds(Math.max(0, Math.ceil((state.responseDeadline! - Date.now()) / 1000)));
     update();
     const timer = window.setInterval(update, 250);
     return () => window.clearInterval(timer);
   }, [state.phase, state.responseDeadline]);
 
   useEffect(() => {
-    if (!canSubmitAnswer) {
+    if (state.phase === 'countdown' || state.phase === 'reveal') {
       setAnswerTitle('');
       setAnswerArtist('');
+    } else {
+      if (state.awarded?.title && state.foundFields?.title) {
+        setAnswerTitle(state.foundFields.title);
+      }
+      if (state.awarded?.artist && state.foundFields?.artist) {
+        setAnswerArtist(state.foundFields.artist);
+      }
     }
-  }, [canSubmitAnswer]);
+  }, [state.phase, state.awarded, state.foundFields]);
+
+  const titleLocked = !!state.awarded?.title && state.phase !== 'reveal';
+  const artistLocked = !!state.awarded?.artist && state.phase !== 'reveal';
 
   return (
     <div className="mx-auto grid max-w-6xl gap-6 px-4 py-8 lg:grid-cols-[1fr_300px]">
@@ -155,7 +162,7 @@ export default function HostGame({
                 : 'La personne tape sa réponse sur son appareil.'}
             </p>
             {state.submittedAnswer && state.answerVerdict ? (
-              <div className="mt-6 w-full max-w-2xl rounded-xl bg-gradient-to-r from-rose-600/30 via-purple-700/20 to-accent/20 p-6 text-left text-sm shadow-lg z-50">
+              <div className="mt-6 w-full max-w-2xl rounded-xl bg-gradient-to-r from-rose-600/30 via-purple-700/20 to-accent/20 p-6 text-left text-sm shadow-lg z-50 animate-fade-in">
                 <div className="mb-2 text-sm text-white/60">Réponse envoyée par {buzzer?.name ?? 'Sur place'}</div>
                 <div className="flex items-center justify-between gap-4">
                   <div>
@@ -163,8 +170,12 @@ export default function HostGame({
                     <div className="text-white/70">{state.submittedAnswer.artist || '—'}</div>
                   </div>
                   <div className="text-right">
-                    <div className={state.answerVerdict.title ? 'text-emerald-300' : 'text-rose-400'}>{state.answerVerdict.title ? 'Titre OK' : 'Titre ✗'}</div>
-                    <div className={state.answerVerdict.artist ? 'text-emerald-300' : 'text-rose-400'}>{state.answerVerdict.artist ? 'Artiste OK' : 'Artiste ✗'}</div>
+                    <div className={state.answerVerdict.title ? 'text-emerald-300 font-bold' : 'text-rose-400'}>
+                      {state.answerVerdict.title ? 'Titre OK ✓' : 'Titre ✗'}
+                    </div>
+                    <div className={state.answerVerdict.artist ? 'text-emerald-300 font-bold' : 'text-rose-400'}>
+                      {state.answerVerdict.artist ? 'Artiste OK ✓' : 'Artiste ✗'}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -173,6 +184,8 @@ export default function HostGame({
                 <AnswerForm
                   title={answerTitle}
                   artist={answerArtist}
+                  titleLocked={titleLocked}
+                  artistLocked={artistLocked}
                   onTitle={setAnswerTitle}
                   onArtist={setAnswerArtist}
                   onSubmit={() => onSubmitAnswer({ title: answerTitle, artist: answerArtist })}
@@ -189,6 +202,8 @@ export default function HostGame({
               <p className="text-3xl font-black">{answer.title}</p>
               <p className="text-xl text-white/60">{answer.artist}</p>
             </div>
+
+            {/* Mode Course : toutes les réponses */}
             {isCourse && state.raceAnswers.length > 0 && (
               <div className="w-full max-w-md space-y-3 rounded-xl bg-white/5 p-4 text-left text-sm">
                 <p className="font-semibold text-white/70">Réponses de la manche</p>
@@ -213,11 +228,11 @@ export default function HostGame({
                             {value}
                           </span>
                           {race.verdict[field] ? (
-                            <span className="shrink-0 text-emerald-300">Validé</span>
+                            <span className="shrink-0 text-emerald-300 font-semibold">Validé ✓</span>
                           ) : (
                             <button
                               type="button"
-                              className="btn-ghost shrink-0 px-2 py-1 text-xs"
+                              className="btn-ghost shrink-0 px-2 py-1 text-xs text-neon hover:bg-neon/10"
                               onClick={() => onCorrectAnswer(field, race.playerId)}
                             >
                               En fait c’était bon
@@ -231,37 +246,52 @@ export default function HostGame({
                 ))}
               </div>
             )}
-            {state.submittedAnswer && state.answerVerdict && (
-              <div className="w-full max-w-md rounded-xl bg-white/5 p-4 text-left text-sm">
-                <p className="mb-2 font-semibold text-white/70">Réponse tapée</p>
-                {(['title', 'artist'] as const).map((field) => {
-                  const label = field === 'title' ? 'Titre' : 'Artiste';
-                  const value = state.submittedAnswer?.[field];
-                  const accepted = state.answerVerdict?.[field];
-                  return (
-                    <div key={field} className="mt-2 flex items-center justify-between gap-3">
-                      <span className="min-w-0 truncate">
-                        <span className="text-white/50">{label} : </span>
-                        {value || 'non renseigné'}
+
+            {/* Modes Téléphones / Équipes / Solo : toutes les tentatives de la manche */}
+            {!isCourse && state.roundAttempts && state.roundAttempts.length > 0 && (
+              <div className="w-full max-w-md space-y-3 rounded-xl bg-white/5 p-4 text-left text-sm">
+                <p className="font-semibold text-white/70">Réponses tentées dans la manche</p>
+                {state.roundAttempts.map((attempt, index) => (
+                  <div key={`${attempt.playerId}-${index}`} className="rounded-lg bg-black/20 p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="truncate font-semibold">{attempt.name}</span>
+                      <span className="shrink-0 text-white/60">
+                        <span className={attempt.points > 0 ? 'font-bold text-accent' : 'text-white/50'}>
+                          {attempt.points > 0 ? `+${attempt.points}` : '0'} pt{attempt.points > 1 ? 's' : ''}
+                        </span>
                       </span>
-                      {value && (
-                        accepted ? (
-                          <span className="shrink-0 text-emerald-300">Validé</span>
-                        ) : (
-                          <button
-                            type="button"
-                            className="btn-ghost shrink-0 px-2 py-1 text-xs"
-                            onClick={() => onCorrectAnswer(field)}
-                          >
-                            En fait c’était bon
-                          </button>
-                        )
-                      )}
                     </div>
-                  );
-                })}
+                    {(['title', 'artist'] as const).map((field) => {
+                      const label = field === 'title' ? 'Titre' : 'Artiste';
+                      const value = attempt[field];
+                      const accepted = attempt.verdict[field];
+                      if (!value) return null;
+                      return (
+                        <div key={field} className="mt-2 flex items-center justify-between gap-3">
+                          <span className="min-w-0 truncate">
+                            <span className="text-white/50">{label} : </span>
+                            {value}
+                          </span>
+                          {accepted ? (
+                            <span className="shrink-0 text-emerald-300 font-semibold">Validé ✓</span>
+                          ) : (
+                            <button
+                              type="button"
+                              className="btn-ghost shrink-0 px-2 py-1 text-xs text-neon hover:bg-neon/10"
+                              onClick={() => onCorrectAnswer(field, attempt.playerId)}
+                            >
+                              En fait c’était bon
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                    {!attempt.title && !attempt.artist && <p className="mt-2 text-white/45">Réponse vide</p>}
+                  </div>
+                ))}
               </div>
             )}
+
             <button className="btn-primary" onClick={onNext}>
               Manche suivante
             </button>
@@ -283,6 +313,7 @@ export default function HostGame({
               players={state.players}
               teams={state.teamScores}
               mode={state.settings.mode}
+              hostPlays={state.settings.hostPlays}
               highlight={state.buzzedBy}
             />
           </>
@@ -306,12 +337,6 @@ export default function HostGame({
           </>
         </div>
       </aside>
-      {debug && (
-        <div style={{ position: 'fixed', right: 12, bottom: 12, width: 520, maxHeight: '50vh', overflow: 'auto', background: 'rgba(0,0,0,0.6)', color: 'white', padding: 12, borderRadius: 8, zIndex: 60 }}>
-          <div style={{ fontWeight: 700, marginBottom: 8 }}>DEBUG room_state</div>
-          <pre style={{ whiteSpace: 'pre-wrap', fontSize: 12 }}>{JSON.stringify(state, null, 2)}</pre>
-        </div>
-      )}
     </div>
   );
 }

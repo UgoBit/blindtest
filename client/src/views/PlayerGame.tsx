@@ -30,7 +30,13 @@ export default function PlayerGame({
   const iAnswered = state.answeredBy.includes(playerId);
   const iBuzzed = state.buzzedBy === playerId || iRace;
   const canBuzz = state.phase === 'listening' && !me?.lockedOut && !iRace && !iAnswered;
-  const canSubmit = state.phase === 'buzzed' ? state.buzzedBy === playerId : (isCourse && state.phase === 'listening' && !iAnswered && !me?.lockedOut);
+  const canSubmit =
+    state.phase === 'buzzed'
+      ? state.buzzedBy === playerId &&
+        !state.submittedAnswer &&
+        (state.responseDeadline ? state.responseDeadline > Date.now() : true)
+      : isCourse && state.phase === 'listening' && !iAnswered && !me?.lockedOut;
+
   const [flash, setFlash] = useState(false);
   const [coverFailed, setCoverFailed] = useState(false);
   const previousPhase = useRef(state.phase);
@@ -49,7 +55,8 @@ export default function PlayerGame({
       setRemainingResponseSeconds(0);
       return;
     }
-    const update = () => setRemainingResponseSeconds(Math.max(0, Math.ceil((state.responseDeadline! - Date.now()) / 1000)));
+    const update = () =>
+      setRemainingResponseSeconds(Math.max(0, Math.ceil((state.responseDeadline! - Date.now()) / 1000)));
     update();
     const timer = window.setInterval(update, 250);
     return () => window.clearInterval(timer);
@@ -59,8 +66,15 @@ export default function PlayerGame({
     if (state.phase === 'countdown' || state.phase === 'reveal') {
       setAnswerTitle('');
       setAnswerArtist('');
+    } else {
+      if (state.awarded?.title && state.foundFields?.title) {
+        setAnswerTitle(state.foundFields.title);
+      }
+      if (state.awarded?.artist && state.foundFields?.artist) {
+        setAnswerArtist(state.foundFields.artist);
+      }
     }
-  }, [state.phase]);
+  }, [state.phase, state.awarded, state.foundFields]);
 
   useEffect(() => {
     if (!iBuzzed) return;
@@ -94,33 +108,34 @@ export default function PlayerGame({
             : 'buzzer-settled';
   const hasCover = state.phase === 'reveal' && state.answer?.cover && !coverFailed;
   const clipTotal = state.settings.clipSeconds ?? 30;
-  // Smooth local interpolation of remaining seconds to avoid visible ticks.
+
+  // Exact timestamp-based smooth remaining seconds
   const [smoothRemaining, setSmoothRemaining] = useState<number>(state.remainingSeconds);
-  const lastServerAt = useRef<number>(Date.now());
-  const lastServerRemaining = useRef<number>(state.remainingSeconds);
 
   useEffect(() => {
-    lastServerAt.current = Date.now();
-    lastServerRemaining.current = state.remainingSeconds;
-    setSmoothRemaining(state.remainingSeconds);
-  }, [state.remainingSeconds]);
-
-  useEffect(() => {
+    if (state.phase !== 'listening') {
+      setSmoothRemaining(
+        state.phase === 'buzzed' ? state.remainingSeconds : state.phase === 'countdown' ? clipTotal : 0,
+      );
+      return;
+    }
     let raf = 0;
     const tick = () => {
-      if (state.phase !== 'listening') return;
-      const elapsed = (Date.now() - lastServerAt.current) / 1000;
-      const next = Math.max(0, lastServerRemaining.current - elapsed);
-      setSmoothRemaining(next);
+      if (state.phase !== 'listening' || !state.clipEndsAt) return;
+      const remaining = Math.max(0, (state.clipEndsAt - Date.now()) / 1000);
+      setSmoothRemaining(remaining);
       raf = requestAnimationFrame(tick);
     };
-    if (state.phase === 'listening') raf = requestAnimationFrame(tick);
+    raf = requestAnimationFrame(tick);
     return () => {
       if (raf) cancelAnimationFrame(raf);
     };
-  }, [state.phase]);
+  }, [state.phase, state.clipEndsAt, state.remainingSeconds, clipTotal]);
 
   const pct = Math.max(0, Math.min(100, (smoothRemaining / clipTotal) * 100));
+
+  const titleLocked = !!state.awarded?.title && state.phase !== 'reveal';
+  const artistLocked = !!state.awarded?.artist && state.phase !== 'reveal';
 
   return (
     <div className="mx-auto flex min-h-screen max-w-md flex-col gap-5 px-4 py-6">
@@ -184,7 +199,13 @@ export default function PlayerGame({
           }`}
         >
           {(state.phase === 'listening' || state.phase === 'buzzed') && (
-            <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet" aria-hidden style={{ zIndex: 0, position: 'absolute', left: 0, top: 0 }}>
+            <svg
+              className="absolute inset-0 h-full w-full"
+              viewBox="0 0 100 100"
+              preserveAspectRatio="xMidYMid meet"
+              aria-hidden
+              style={{ zIndex: 0, position: 'absolute', left: 0, top: 0 }}
+            >
               <defs>
                 <linearGradient id="g1" x1="0%" x2="100%">
                   <stop offset="0%" stopColor="#7c5cff" />
@@ -207,7 +228,13 @@ export default function PlayerGame({
                     strokeWidth={rInner * 2}
                     strokeLinecap="butt"
                     strokeDasharray={circumference}
-                    style={{ transform: 'rotate(-90deg)', transformOrigin: '50% 50%', strokeDashoffset: dashOffset, transition: 'stroke-dashoffset 100ms linear', willChange: 'stroke-dashoffset' }}
+                    style={{
+                      transform: 'rotate(-90deg)',
+                      transformOrigin: '50% 50%',
+                      strokeDashoffset: dashOffset,
+                      transition: 'stroke-dashoffset 100ms linear',
+                      willChange: 'stroke-dashoffset',
+                    }}
                   />
                 );
               })()}
@@ -248,12 +275,12 @@ export default function PlayerGame({
             {state.phase === 'buzzed' && (
               <>
                 {iBuzzed ? (
-                  <>
-                    <span className="text-4xl">À toi !</span>
-                  </>
+                  <span className="text-4xl">À toi !</span>
                 ) : (
                   <>
-                    <span className="max-w-full break-words text-3xl leading-tight">{buzzer?.name ?? 'Quelqu’un'}</span>
+                    <span className="max-w-full break-words text-3xl leading-tight">
+                      {buzzer?.name ?? 'Quelqu’un'}
+                    </span>
                     <span className="text-base font-semibold normal-case tracking-normal text-white/70">
                       {state.settings.mode === 'teams' ? buzzerTeam?.score ?? 0 : buzzer?.score ?? 0} pts
                     </span>
@@ -277,36 +304,112 @@ export default function PlayerGame({
                 {revealDelta > 0 && <span className="buzzer-points">+{revealDelta}</span>}
               </>
             )}
-            {(state.submittedAnswer && state.answerVerdict && state.phase === 'buzzed') && (
-              <div className="absolute bottom-6 left-1/2 z-20 w-11/12 -translate-x-1/2 rounded-xl bg-black/60 p-3 text-left text-sm animate-fade-in">
-                <div className="flex items-center justify-between">
-                  <div className="truncate">
-                    <div className="text-white/60 text-xs">Réponse proposée ({buzzer?.name ?? 'Quelqu’un'})</div>
-                    <div className="mt-1 font-semibold text-white">{state.submittedAnswer.title || '—'}</div>
-                    <div className="text-white/60">{state.submittedAnswer.artist || '—'}</div>
-                  </div>
-                  <div className="ml-3 flex flex-col items-end gap-2">
-                    <span className={state.answerVerdict.title ? 'text-emerald-300' : 'text-rose-400'}>{state.answerVerdict.title ? 'Titre OK' : 'Titre ✗'}</span>
-                    <span className={state.answerVerdict.artist ? 'text-emerald-300' : 'text-rose-400'}>{state.answerVerdict.artist ? 'Artiste OK' : 'Artiste ✗'}</span>
-                  </div>
-                </div>
-              </div>
-            )}
           </span>
         </button>
+      )}
+
+      {/* ENCART FEEDBACK LISIBLE LORS DU BUZZ (HORS BOUTON CIRCULAIRE) */}
+      {state.phase === 'buzzed' && state.submittedAnswer && state.answerVerdict && (
+        <div className="card space-y-2 border border-white/15 bg-black/50 p-4 text-left text-sm animate-fade-in shadow-xl backdrop-blur-md">
+          <div className="flex items-center justify-between text-xs text-white/55">
+            <span>Réponse proposée par {buzzer?.name ?? 'Quelqu’un'}</span>
+            <span className="font-semibold text-neon">Résultat</span>
+          </div>
+          <div className="space-y-1.5 pt-1">
+            <div className="flex items-center justify-between rounded-lg bg-white/5 px-3 py-2">
+              <span className="truncate text-white/80">
+                <span className="text-xs text-white/40">Titre : </span>
+                {state.submittedAnswer.title || <span className="italic text-white/30">non renseigné</span>}
+              </span>
+              <span
+                className={`ml-2 shrink-0 text-xs font-bold ${
+                  state.answerVerdict.title ? 'text-emerald-300' : 'text-rose-400'
+                }`}
+              >
+                {state.answerVerdict.title ? '✓ Validé' : '✗ Incorrect'}
+              </span>
+            </div>
+            <div className="flex items-center justify-between rounded-lg bg-white/5 px-3 py-2">
+              <span className="truncate text-white/80">
+                <span className="text-xs text-white/40">Artiste : </span>
+                {state.submittedAnswer.artist || <span className="italic text-white/30">non renseigné</span>}
+              </span>
+              <span
+                className={`ml-2 shrink-0 text-xs font-bold ${
+                  state.answerVerdict.artist ? 'text-emerald-300' : 'text-rose-400'
+                }`}
+              >
+                {state.answerVerdict.artist ? '✓ Validé' : '✗ Incorrect'}
+              </span>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* FORMULAIRE BUZZ CLASSIQUE (Hors course) */}
       {!isCourse && canSubmit && (
         <AnswerForm
-          className="card space-y-3 text-left"
-          hint={`Un seul champ suffit · ${remainingResponseSeconds}s restantes`}
+          className="card space-y-3 text-left animate-fade-in"
+          hint={`Tape vite · ${remainingResponseSeconds}s restantes`}
           title={answerTitle}
           artist={answerArtist}
+          titleLocked={titleLocked}
+          artistLocked={artistLocked}
           onTitle={setAnswerTitle}
           onArtist={setAnswerArtist}
           onSubmit={() => onSubmitAnswer({ title: answerTitle, artist: answerArtist })}
         />
+      )}
+
+      {/* RÉCAPITULATIF TOUTES LES RÉPONSES EN REVEAL (HORS COURSE) */}
+      {!isCourse && state.phase === 'reveal' && state.roundAttempts && state.roundAttempts.length > 0 && (
+        <section className="card space-y-3 text-left text-sm">
+          <h3 className="font-bold text-neon">🏁 Réponses de la manche</h3>
+          {state.roundAttempts.map((attempt, index) => {
+            const isMe = attempt.playerId === playerId;
+            return (
+              <div
+                key={`${attempt.playerId}-${index}`}
+                className={`rounded-xl p-3 transition ${
+                  isMe ? 'border border-neon/40 bg-neon/15' : 'bg-white/5'
+                }`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-bold">
+                    {attempt.name} {isMe && <span className="text-xs text-neon">(Toi)</span>}
+                  </span>
+                  <span className="text-xs text-white/60">
+                    <span className={attempt.points > 0 ? 'font-bold text-accent' : 'text-white/40'}>
+                      {attempt.points > 0 ? `+${attempt.points}` : '0'} pt{attempt.points > 1 ? 's' : ''}
+                    </span>
+                  </span>
+                </div>
+
+                <div className="mt-2 space-y-1 text-xs">
+                  {attempt.title && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-white/70">Titre : {attempt.title}</span>
+                      <span className={attempt.verdict.title ? 'font-bold text-emerald-300' : 'text-rose-400'}>
+                        {attempt.verdict.title ? '✓' : '✗'}
+                      </span>
+                    </div>
+                  )}
+                  {attempt.artist && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-white/70">Artiste : {attempt.artist}</span>
+                      <span className={attempt.verdict.artist ? 'font-bold text-emerald-300' : 'text-rose-400'}>
+                        {attempt.verdict.artist ? '✓' : '✗'}
+                      </span>
+                    </div>
+                  )}
+                  {!attempt.title && !attempt.artist && (
+                    <span className="italic text-white/40">Aucune réponse renseignée</span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </section>
       )}
 
       {/* RÉCAPITULATIF MODE COURSE EN REVEAL (TOUTES LES RÉPONSES DES JOUEURS) */}
@@ -339,7 +442,7 @@ export default function PlayerGame({
                     {race.title && (
                       <div className="flex items-center justify-between">
                         <span className="text-white/70">Titre : {race.title}</span>
-                        <span className={race.verdict.title ? 'text-emerald-300 font-bold' : 'text-rose-400'}>
+                        <span className={race.verdict.title ? 'font-bold text-emerald-300' : 'text-rose-400'}>
                           {race.verdict.title ? '✓' : '✗'}
                         </span>
                       </div>
@@ -347,20 +450,20 @@ export default function PlayerGame({
                     {race.artist && (
                       <div className="flex items-center justify-between">
                         <span className="text-white/70">Artiste : {race.artist}</span>
-                        <span className={race.verdict.artist ? 'text-emerald-300 font-bold' : 'text-rose-400'}>
+                        <span className={race.verdict.artist ? 'font-bold text-emerald-300' : 'text-rose-400'}>
                           {race.verdict.artist ? '✓' : '✗'}
                         </span>
                       </div>
                     )}
                     {!race.title && !race.artist && (
-                      <span className="text-white/40 italic">Aucune réponse renseignée</span>
+                      <span className="italic text-white/40">Aucune réponse renseignée</span>
                     )}
                   </div>
                 </div>
               );
             })
           ) : (
-            <p className="text-white/50 text-xs">Personne n'a répondu à cette manche.</p>
+            <p className="text-xs text-white/50">Personne n'a répondu à cette manche.</p>
           )}
         </section>
       )}
@@ -371,6 +474,7 @@ export default function PlayerGame({
           players={state.players}
           teams={state.teamScores}
           mode={state.settings.mode}
+          hostPlays={state.settings.hostPlays}
           highlight={playerId}
         />
       </section>

@@ -12,10 +12,16 @@ export default function Finished({
 }) {
   const scoring = state.settings.buzzerEnabled;
   const teamMode = state.settings.mode === 'teams';
-  const best = Math.max(0, ...(teamMode ? state.teamScores.map((team) => team.score) : state.players.map((p) => p.score)));
+  const scoringPlayers = state.players.filter(
+    (p) => !p.isHost || state.settings.mode === 'solo' || state.settings.hostPlays,
+  );
+  const best = Math.max(
+    0,
+    ...(teamMode ? state.teamScores.map((team) => team.score) : scoringPlayers.map((p) => p.score)),
+  );
   const leaders = teamMode
     ? state.teamScores.filter((team) => team.score === best)
-    : state.players.filter((p) => p.score === best);
+    : scoringPlayers.filter((p) => p.score === best);
   const winner = best > 0 && leaders.length === 1 ? leaders[0] : null;
   const names = leaders.map((leader) => leader.name);
   const winningPlayer = winner && 'id' in winner ? winner : null;
@@ -44,6 +50,7 @@ export default function Finished({
             players={state.players}
             teams={state.teamScores}
             mode={state.settings.mode}
+            hostPlays={state.settings.hostPlays}
             highlight={winningPlayer?.id}
             highlightTeam={winningTeam?.team}
           />

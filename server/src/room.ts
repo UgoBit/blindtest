@@ -4,6 +4,7 @@ import type {
   Phase,
   Player,
   RaceAnswer,
+  RoundAttempt,
   RoomSettings,
   RoomState,
   ServerToClientEvents,
@@ -54,6 +55,7 @@ export class Room {
   private clipEndsAt = 0;
   private remainingMs = 0;
   private awarded = { title: false, artist: false };
+  private foundFields: { title: string | null; artist: string | null } = { title: null, artist: null };
   private submittedAnswer: { title: string; artist: string } | null = null;
   private answerVerdict: { title: boolean; artist: boolean } | null = null;
   private submittedBy: string | null = null;
@@ -61,6 +63,7 @@ export class Room {
   /** Course mode: player id -> seconds elapsed in the clip when they buzzed. */
   private racers = new Map<string, number>();
   private raceAnswers: RaceAnswer[] = [];
+  private roundAttempts: RoundAttempt[] = [];
   private raceScoresApplied = false;
 
   constructor(io: Io, settings: RoomSettings) {
@@ -199,13 +202,20 @@ export class Room {
       return member.isHost ? this.settings.hostPlays : true;
     }
     if (this.settings.mode === 'solo') return member.isHost;
-    if (this.settings.mode === 'teams') return member.isHost ? this.settings.hostPlays : true;
-    return !member.isHost;
+    return member.isHost ? this.settings.hostPlays : true;
   }
 
   state(): RoomState {
     const track = this.currentTrack;
-      const remainingSeconds = Math.max(0, Math.ceil(this.settings.clipSeconds - this.elapsedSeconds()));
+    const remainingSeconds =
+      this.phase === 'listening'
+        ? Math.max(0, (this.clipEndsAt - Date.now()) / 1000)
+        : this.phase === 'buzzed'
+          ? Math.max(0, this.remainingMs / 1000)
+          : this.phase === 'countdown'
+            ? this.settings.clipSeconds
+            : 0;
+
     return {
       code: this.code,
       phase: this.phase,
@@ -217,7 +227,6 @@ export class Room {
             this.phase === 'lobby' ||
             !player.isHost ||
             this.settings.mode === 'solo' ||
-            this.settings.mode === 'teams' ||
             this.settings.hostPlays,
         ),
       buzzedBy: this.buzzedBy,
@@ -227,7 +236,8 @@ export class Room {
           : null,
       track: track ? { index: this.round + 1, total: this.playlist.length, cover: null } : null,
       round: this.round,
-        remainingSeconds,
+      remainingSeconds: Math.ceil(remainingSeconds),
+      clipEndsAt: this.phase === 'listening' ? this.clipEndsAt : null,
       teamScores: this.settings.mode === 'teams'
         ? this.teamScores.map((score, index) => ({ team: index + 1, name: this.settings.teamNames[index] ?? `Équipe ${index + 1}`, score }))
         : [],
@@ -242,6 +252,9 @@ export class Room {
       racers: this.isCourse ? [...this.racers.keys()] : [],
       answeredBy: this.isCourse ? this.raceAnswers.map((answer) => answer.playerId) : [],
       raceAnswers: this.isCourse && this.phase === 'reveal' ? this.raceAnswers : [],
+      roundAttempts: this.phase === 'reveal' || this.phase === 'buzzed' ? this.roundAttempts : [],
+      awarded: this.awarded,
+      foundFields: this.foundFields,
     };
   }
 
@@ -387,11 +400,13 @@ export class Room {
     this.clearFeedbackTimer();
     this.buzzedBy = null;
     this.awarded = { title: false, artist: false };
+    this.foundFields = { title: null, artist: null };
     this.submittedAnswer = null;
     this.answerVerdict = null;
     this.submittedBy = null;
     this.racers.clear();
     this.raceAnswers = [];
+    this.roundAttempts = [];
     this.raceScoresApplied = false;
     for (const member of this.players.values()) member.lockedOut = false;
 
@@ -524,11 +539,9 @@ export class Room {
       return;
     }
     if (this.phase !== 'buzzed') return;
-    if (!this.buzzedBy) {
-      this.resumeAfterMissingBuzzer();
-      return;
-    }
-    if (this.buzzedBy !== playerId) return;
+    if (!this.buzzedBy || this.buzzedBy !== playerId) return;
+    // Prevent multiple submissions or submitting after response was processed
+    if (this.submittedAnswer !== null) return;
     const member = this.players.get(playerId);
     if (!member) {
       this.resumeAfterMissingBuzzer();
@@ -537,21 +550,37 @@ export class Room {
     this.clearResponseTimer();
     this.submittedAnswer = this.cleanAnswer(answer);
     this.answerVerdict = this.judgeAnswer(this.submittedAnswer);
-    // (debug logs removed)
 
+    let pointsGained = 0;
     if (this.answerVerdict.title && !this.awarded.title) {
       member.score += POINTS.title;
       if (this.settings.mode === 'teams' && member.team) this.teamScores[member.team - 1] += POINTS.title;
       this.awarded.title = true;
+      this.foundFields.title = this.currentTrack?.title ?? this.submittedAnswer.title;
+      pointsGained += POINTS.title;
     }
     if (this.answerVerdict.artist && !this.awarded.artist) {
       member.score += POINTS.artist;
       if (this.settings.mode === 'teams' && member.team) this.teamScores[member.team - 1] += POINTS.artist;
       this.awarded.artist = true;
+      this.foundFields.artist = this.currentTrack?.artist ?? this.submittedAnswer.artist;
+      pointsGained += POINTS.artist;
     }
 
-    // If both fields are correct, reveal the answer and end the round.
-    if (this.answerVerdict.title && this.answerVerdict.artist) {
+    // Save attempt in round history
+    this.roundAttempts.push({
+      playerId,
+      name: member.name,
+      team: member.team,
+      title: this.submittedAnswer.title,
+      artist: this.submittedAnswer.artist,
+      verdict: { ...this.answerVerdict },
+      points: pointsGained,
+      seconds: Math.floor(this.elapsedSeconds()),
+    });
+
+    // If both fields have been found across the round (even by different players), end the round!
+    if (this.awarded.title && this.awarded.artist) {
       this.reveal();
       return;
     }
@@ -559,8 +588,7 @@ export class Room {
     // Partial or wrong answer: award any individual points, exclude the player
     // for the remainder of the track and briefly show their submitted fields
     // and verdicts before resuming playback so clients (host and players)
-    // can display feedback. This is important for solo mode where the host
-    // physically buzzes but others still guess aloud.
+    // can display feedback.
     if (this.settings.mode === 'teams' && member.team) {
       for (const teammate of this.players.values()) {
         if (teammate.team === member.team) teammate.lockedOut = true;
@@ -572,13 +600,11 @@ export class Room {
     // Keep submittedBy/submittedAnswer/answerVerdict visible by staying in
     // the 'buzzed' phase for a short feedback window, then resume or reveal.
     const stillPlaying = [...this.players.values()].some((p) => this.canBuzz(p.id));
-    // Clear any previous feedback timer
     this.clearFeedbackTimer();
-    // Broadcast immediately so clients show the submitted answer/verdct.
     this.phase = 'buzzed';
     this.broadcast();
 
-    const feedbackMs = 5000;
+    const feedbackMs = 4000;
     this.feedbackTimer = setTimeout(() => {
       this.clearFeedbackTimer();
       // Clear the buzzedBy marker now so subsequent state doesn't show a buzzer
@@ -624,14 +650,26 @@ export class Room {
       if (playerId) this.correctRaceAnswer(field, playerId);
       return;
     }
-    if (!this.submittedBy || !this.submittedAnswer || !this.answerVerdict) return;
-    if (this.awarded[field] || !this.submittedAnswer[field]) return;
-    const member = this.players.get(this.submittedBy);
+    const targetPlayerId = playerId ?? this.submittedBy;
+    if (!targetPlayerId) return;
+    const member = this.players.get(targetPlayerId);
     if (!member) return;
+
+    // Find the attempt in roundAttempts
+    const attempt = this.roundAttempts.find((a) => a.playerId === targetPlayerId && a[field]);
+    if (!attempt || attempt.verdict[field]) return;
+
+    attempt.verdict[field] = true;
+    attempt.points += POINTS[field];
     member.score += POINTS[field];
     if (this.settings.mode === 'teams' && member.team) this.teamScores[member.team - 1] += POINTS[field];
     this.awarded[field] = true;
-    this.answerVerdict[field] = true;
+    if (this.currentTrack) {
+      this.foundFields[field] = this.currentTrack[field];
+    }
+    if (this.answerVerdict && this.submittedBy === targetPlayerId) {
+      this.answerVerdict[field] = true;
+    }
     this.broadcast();
   }
 

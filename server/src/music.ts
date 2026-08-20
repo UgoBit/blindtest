@@ -23,6 +23,7 @@ interface DeezerTrack {
 
 interface DeezerPlaylist {
   id: number;
+  title?: string;
   nb_tracks?: number;
 }
 
@@ -139,7 +140,6 @@ export function singleAnswerMatches(input: string, expected: string): boolean {
   if (left.length >= 3 && right.length >= 3) {
     if (right.includes(left) || left.includes(right)) {
       const ratio = Math.min(left.length, right.length) / Math.max(left.length, right.length);
-      // If either word contains the other and length is reasonable or length >= 4
       if (ratio >= 0.35 || Math.min(left.length, right.length) >= 4) {
         return true;
       }
@@ -228,14 +228,37 @@ export function answerMatches(input: string, expected: string, kind: 'title' | '
   return singleAnswerMatches(input, expected);
 }
 
-async function fetchFromSource(source: ThemeSource, extraQuery = ''): Promise<Track[]> {
+const CONFLICTING_DECADE_REGEX: Record<string, RegExp> = {
+  '2020s': /\b(80s?|90s?|70s?|60s?|2000s?|00s?|19[5-9]\d|throwback|retro|oldies)\b/i,
+  '2010s': /\b(202\d|80s?|90s?|70s?|60s?|19[5-9]\d|oldies)\b/i,
+  '2000s': /\b(202\d|201\d|80s?|90s?|70s?|60s?|19[5-9]\d)\b/i,
+  '90s': /\b(202\d|201\d|2000s?|00s?|80s?|70s?|60s?)\b/i,
+  '80s': /\b(202\d|201\d|2000s?|00s?|90s?|70s?|60s?)\b/i,
+  '70s': /\b(202\d|201\d|2000s?|00s?|90s?|80s?|60s?)\b/i,
+  '60s': /\b(202\d|201\d|2000s?|00s?|90s?|80s?|70s?)\b/i,
+};
+
+const FAKE_ARTIST_REGEX = /^(?:various artists|multi-interprètes|les meilleurs|party hits|top hits|best of|summer hits|hit tracks|hits 20\d\d)\b/i;
+
+function isAcceptableTrack(track: Track): boolean {
+  if (!track.title || !track.artist || !track.previewUrl) return false;
+  if (FAKE_ARTIST_REGEX.test(track.artist.trim())) return false;
+  return true;
+}
+
+async function fetchFromSource(
+  source: ThemeSource,
+  themeId: string,
+  category: string,
+  extraQuery = '',
+): Promise<Track[]> {
   const tracks: Track[] = [];
   if (source.kind === 'chart') {
     const genreId = source.genreId;
     const data = await fetchJson<{ data?: DeezerTrack[] }>(`${DEEZER}/chart/${genreId}/tracks?limit=100`);
     for (const t of data?.data ?? []) {
       const track = toTrack(t);
-      if (track) tracks.push(track);
+      if (track && isAcceptableTrack(track)) tracks.push(track);
     }
     const radios = await fetchJson<{ data?: { id: number }[] }>(`${DEEZER}/genre/${genreId}/radios`);
     for (const radio of (radios?.data ?? []).slice(0, 3)) {
@@ -244,35 +267,44 @@ async function fetchFromSource(source: ThemeSource, extraQuery = ''): Promise<Tr
       );
       for (const t of radioTracks?.data ?? []) {
         const track = toTrack(t);
-        if (track) tracks.push(track);
+        if (track && isAcceptableTrack(track)) tracks.push(track);
       }
     }
   } else {
+    const conflictRegex = CONFLICTING_DECADE_REGEX[themeId];
     for (const query of source.queries) {
       const composed = extraQuery ? `${query} ${extraQuery}`.trim() : query;
 
       // 1) Search playlists
       const found = await fetchJson<{ data?: DeezerPlaylist[] }>(
-        `${DEEZER}/search/playlist?q=${encodeURIComponent(composed)}&limit=5`,
+        `${DEEZER}/search/playlist?q=${encodeURIComponent(composed)}&limit=6`,
       );
-      const playlists = (found?.data ?? []).filter((p) => (p.nb_tracks ?? 0) >= 20).slice(0, 3);
+      const playlists = (found?.data ?? []).filter((p) => {
+        const title = p.title ?? '';
+        if (conflictRegex && conflictRegex.test(title)) return false;
+        const count = p.nb_tracks ?? 0;
+        return count >= 15 && count <= 250;
+      }).slice(0, 4);
+
       for (const playlist of playlists) {
         const data = await fetchJson<{ data?: DeezerTrack[] }>(
           `${DEEZER}/playlist/${playlist.id}/tracks?limit=100`,
         );
         for (const t of data?.data ?? []) {
           const track = toTrack(t);
-          if (track) tracks.push(track);
+          if (track && isAcceptableTrack(track)) tracks.push(track);
         }
       }
 
-      // 2) Direct search
-      const direct = await fetchJson<{ data?: DeezerTrack[] }>(
-        `${DEEZER}/search?q=${encodeURIComponent(composed)}&limit=60`,
-      );
-      for (const t of direct?.data ?? []) {
-        const track = toTrack(t);
-        if (track) tracks.push(track);
+      // 2) Direct search only for cultural themes (films, disney, pub, etc.), NOT for decades
+      if (category === 'culture') {
+        const direct = await fetchJson<{ data?: DeezerTrack[] }>(
+          `${DEEZER}/search?q=${encodeURIComponent(composed)}&limit=40`,
+        );
+        for (const t of direct?.data ?? []) {
+          const track = toTrack(t);
+          if (track && isAcceptableTrack(track)) tracks.push(track);
+        }
       }
     }
   }
@@ -285,8 +317,13 @@ async function loadPool(theme: ThemeDefinition, opts?: { yearRanges?: string[]; 
   const cached = poolCache.get(cacheKey);
   if (cached && Date.now() - cached.at < POOL_TTL_MS) return cached.tracks;
 
-  const extraQuery = [...(opts?.genres ?? []), ...(opts?.yearRanges ?? [])].join(' ');
-  const tracks = await fetchFromSource(theme.source, extraQuery);
+  // Only append decade extra query when combining genres with decades, not on decade themes themselves
+  let extraQuery = '';
+  if (theme.category === 'genre' && opts?.yearRanges?.length) {
+    extraQuery = opts.yearRanges.join(' ');
+  }
+
+  const tracks = await fetchFromSource(theme.source, theme.id, theme.category, extraQuery);
 
   const unique = new Map(
     tracks.map((track) => [`${normalizeAnswer(track.title)}|${normalizeAnswer(track.artist)}`, track]),

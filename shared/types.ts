@@ -107,6 +107,17 @@ export interface RoomSettings {
   genres?: string[];
 }
 
+export interface RoundAttempt {
+  playerId: string;
+  name: string;
+  team?: number | null;
+  title: string;
+  artist: string;
+  verdict: { title: boolean; artist: boolean };
+  points: number;
+  seconds: number;
+}
+
 export interface RoomState {
   code: string;
   phase: Phase;
@@ -131,6 +142,14 @@ export interface RoomState {
   answeredBy: string[];
   /** Course mode: every answer of the round, revealed only with the answer. */
   raceAnswers: RaceAnswer[];
+  /** Standard/Phones/Teams/Solo mode: all attempts submitted during the round. */
+  roundAttempts: RoundAttempt[];
+  /** Fields already correctly found in the current round. */
+  awarded: { title: boolean; artist: boolean };
+  /** Text of fields already correctly found in the current round. */
+  foundFields: { title: string | null; artist: string | null };
+  /** Timestamp when clip finishes playing, or null when paused/countdown/reveal. */
+  clipEndsAt: number | null;
   /** Remaining seconds on the current clip (0 when not playing). */
   remainingSeconds: number;
 }

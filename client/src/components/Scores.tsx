@@ -4,11 +4,19 @@ interface Props {
   players: Player[];
   teams?: TeamScore[];
   mode?: GameMode;
+  hostPlays?: boolean;
   highlight?: string | null;
   highlightTeam?: number | null;
 }
 
-export default function Scores({ players, teams = [], mode = 'phones', highlight, highlightTeam }: Props) {
+export default function Scores({
+  players,
+  teams = [],
+  mode = 'phones',
+  hostPlays = false,
+  highlight,
+  highlightTeam,
+}: Props) {
   if (mode === 'teams') {
     const highlightedPlayer = players.find((player) => player.id === highlight);
     const rankedTeams = [...teams].sort((a, b) => b.score - a.score);
@@ -55,7 +63,10 @@ export default function Scores({ players, teams = [], mode = 'phones', highlight
     );
   }
 
-  const ranked = [...players].sort((a, b) => b.score - a.score);
+  const competingPlayers = players.filter(
+    (player) => !player.isHost || mode === 'solo' || hostPlays,
+  );
+  const ranked = [...competingPlayers].sort((a, b) => b.score - a.score);
   if (ranked.length === 0) return <p className="text-white/50">Aucun joueur pour l'instant.</p>;
 
   return (

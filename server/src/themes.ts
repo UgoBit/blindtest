@@ -13,13 +13,13 @@ export interface ThemeDefinition extends Theme {
 }
 
 export const DECADE_QUERIES: Record<string, string[]> = {
-  '60s': ['hits années 60', '60s hits', 'tubes années 60', 'rock 60s', 'chansons années 60'],
-  '70s': ['hits années 70', '70s hits', 'disco 70s', 'tubes 70s', 'rock 70s'],
-  '80s': ['hits années 80', '80s hits', 'pop rock 80s', 'tubes 80s', 'synthpop 80s'],
-  '90s': ['hits années 90', '90s hits', 'dance 90s', 'tubes 90s', 'rock 90s'],
-  '2000s': ['hits années 2000', '2000s hits', 'pop 2000', 'tubes 2000', 'rnb 2000'],
-  '2010s': ['hits années 2010', '2010s hits', 'tubes 2010', 'pop 2010', 'dance 2010'],
-  '2020s': ['hits 2020', 'hits 2021', 'hits 2022', 'hits 2023', 'hits 2024', 'hits actuels', 'tubes 2020'],
+  '60s': ['les plus grands tubes des années 60', '60s international hits', 'chansons francaises 60s', 'top 60s songs'],
+  '70s': ['les plus grands tubes des années 70', '70s international hits', 'disco funk 70s', 'top 70s songs'],
+  '80s': ['les plus grands tubes des années 80', '80s international hits', 'best of 80s', 'top 80s songs'],
+  '90s': ['les plus grands tubes des années 90', '90s international hits', 'dance 90s hits', 'top 90s songs'],
+  '2000s': ['les plus grands tubes des années 2000', '2000s pop hits', 'rnb 2000s', 'top 2000s songs'],
+  '2010s': ['les plus grands tubes des années 2010', '2010s pop hits', 'hits 2010-2019', 'top 2010s songs'],
+  '2020s': ['20s hits', 'hits 2024 france', 'top hits 2023', 'hits 2022 france', 'hits 2021', 'les plus grands tubes 2020'],
 };
 
 export const GENRE_SOURCES: Record<string, ThemeSource> = {

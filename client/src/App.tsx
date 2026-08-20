@@ -49,6 +49,7 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [autoplayBlocked, setAutoplayBlocked] = useState(false);
   const [roomClosedOpen, setRoomClosedOpen] = useState(false);
+  const [isStarting, setIsStarting] = useState(false);
   const [volume, setVolume] = useState<number>(() => {
     try {
       const saved = localStorage.getItem('blindtest_volume');
@@ -118,10 +119,14 @@ export default function App() {
   }, [volume]);
 
   useEffect(() => {
-    const onState = (next: RoomState) => setState(next);
+    const onState = (next: RoomState) => {
+      // If the server moved us out of lobby, the playlist is ready: clear the loading flag.
+      if (next.phase !== 'lobby') setIsStarting(false);
+      setState(next);
+    };
     const onTrack = (next: HostTrack) => setTrack(next);
     const onPlayerTrack = (next: PlayerTrack) => setPlayerTrack(next);
-    const onError = (message: string) => setError(message);
+    const onError = (message: string) => { setIsStarting(false); setError(message); };
     const onAudio = ({ action }: { action: 'play' | 'pause' | 'stop' }) => {
       const audio = audioRef.current;
       if (!audio) return;
@@ -137,7 +142,7 @@ export default function App() {
           // Clear src so the element stops fetching/playing the preview
           audio.removeAttribute('src');
           audio.load();
-        } catch (e) {
+        } catch {
           // ignore
         }
       }
@@ -270,8 +275,7 @@ export default function App() {
   const hostPlaying =
     isHost &&
     state.settings.buzzerEnabled &&
-    (state.settings.mode === 'solo' ||
-      ((state.settings.mode === 'teams' || state.settings.mode === 'course') && state.settings.hostPlays));
+    (state.settings.mode === 'solo' || state.settings.hostPlays);
   const shouldPlayAudio = isHost ? state.settings.audioHostEnabled : state.settings.audioPlayersEnabled;
   const hostMember = state.players.find((player) => player.id === playerId);
   const hostRacing = state.racers.includes(playerId);
@@ -353,9 +357,40 @@ export default function App() {
           onUpdate={(settings) => socket.emit('update_settings', settings)}
           onRenameTeam={(name) => socket.emit('rename_team', name)}
           onAssignTeam={(playerId, team) => socket.emit('assign_team', { playerId, team })}
-          onStart={() => socket.emit('start_game')}
+          onStart={() => {
+            setIsStarting(true);
+            setError(null);
+            socket.emit('start_game');
+          }}
           onKick={(target) => socket.emit('kick', target)}
+          isStarting={isStarting}
         />
+      )}
+
+      {isStarting && state.phase === 'lobby' && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-6 bg-black/70 backdrop-blur-sm">
+          <div className="relative flex h-24 w-24 items-center justify-center">
+            <div className="absolute inset-0 animate-spin rounded-full border-4 border-transparent border-t-neon" style={{ animationDuration: '1s' }} />
+            <div className="absolute inset-3 animate-spin rounded-full border-4 border-transparent border-t-accent" style={{ animationDuration: '1.5s', animationDirection: 'reverse' }} />
+            <span className="text-3xl">🎵</span>
+          </div>
+          <div className="text-center">
+            <p className="text-xl font-bold text-white">Préparation de la playlist…</p>
+            <p className="mt-1 text-sm text-white/60">Recherche des meilleurs extraits, ça peut prendre quelques secondes.</p>
+          </div>
+          <div className="flex gap-1.5">
+            {[0, 1, 2, 3, 4].map((i) => (
+              <span
+                key={i}
+                className="h-1.5 w-8 rounded-full bg-neon/60"
+                style={{
+                  animation: 'pulse 1.2s ease-in-out infinite',
+                  animationDelay: `${i * 0.18}s`,
+                }}
+              />
+            ))}
+          </div>
+        </div>
       )}
 
       {['countdown', 'listening', 'buzzed', 'reveal'].includes(state.phase) &&
@@ -364,7 +399,13 @@ export default function App() {
             <HostGame
               state={state}
               onCorrectAnswer={(field, target) => socket.emit('correct_answer', { field, playerId: target })}
-              canSubmitAnswer={state.buzzedBy === playerId || hostRacing}
+              canSubmitAnswer={
+                state.phase === 'buzzed'
+                  ? state.buzzedBy === playerId &&
+                    !state.submittedAnswer &&
+                    (state.responseDeadline ? state.responseDeadline > Date.now() : true)
+                  : hostRacing
+              }
               onSubmitAnswer={(answer) => socket.emit('submit_answer', answer)}
               onSkip={() => socket.emit('skip')}
               onNext={() => socket.emit('next_round')}

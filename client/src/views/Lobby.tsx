@@ -12,6 +12,7 @@ interface Props {
   onAssignTeam: (playerId: string, team: number | null) => void;
   onStart: () => void;
   onKick: (playerId: string) => void;
+  isStarting?: boolean;
 }
 
 const teamNameFor = (names: string[] | undefined, index: number): string =>
@@ -28,6 +29,7 @@ export default function Lobby({
   onAssignTeam,
   onStart,
   onKick,
+  isStarting = false,
 }: Props) {
   const [themes, setThemes] = useState<Theme[]>([]);
   const [teamName, setTeamName] = useState('Sur place');
@@ -69,9 +71,7 @@ export default function Lobby({
       ? true
       : mode === 'teams'
         ? teamBuzzers > 0 && populatedTeams >= 2
-        : mode === 'course'
-          ? teamBuzzers > 0
-          : guests.length > 0);
+        : teamBuzzers > 0);
 
   useEffect(() => {
     if (host?.name) setTeamName(host.name);
@@ -154,14 +154,17 @@ export default function Lobby({
     if (mode === 'teams') {
       const currentPlayer = players.find((player) => player.id === currentPlayerId);
       return (
-        <div className="mx-auto flex max-w-md flex-col items-center gap-6 px-4 py-12 text-center">
-          <div className="h-16 w-16 rounded-full bg-gradient-to-r from-accent to-neon" />
+        <div className="mx-auto flex max-w-lg flex-col items-center gap-6 px-4 py-8 text-center">
+          <div className="h-16 w-16 animate-pulse rounded-full bg-gradient-to-r from-accent to-neon" />
           <div>
             <h2 className="text-2xl font-bold">En attente du lancement…</h2>
-            <p className="mt-2 text-white/60">
-              {totalMusicSelected} sélection{totalMusicSelected > 1 ? 's' : ''} · {settings.rounds} manches · niveau {settings.difficulty}
+            <p className="mt-1 text-sm text-white/60">
+              L’hôte prépare la partie.
             </p>
           </div>
+
+          <SelectionSummary settings={settings} themes={themes} />
+
           <section className="card w-full text-left">
             <h3 className="text-lg font-bold">Choisis ton équipe</h3>
             <p className="mt-1 text-sm text-white/60">Tu peux encore changer d’équipe avant le lancement.</p>
@@ -191,19 +194,32 @@ export default function Lobby({
       );
     }
     return (
-      <div className="mx-auto flex max-w-md flex-col items-center gap-6 px-4 py-16 text-center">
+      <div className="mx-auto flex max-w-lg flex-col items-center gap-6 px-4 py-8 text-center">
         <div className="h-16 w-16 animate-pulse rounded-full bg-gradient-to-r from-accent to-neon" />
-        <h2 className="text-2xl font-bold">En attente du lancement…</h2>
-        <p className="text-white/60">
-          {totalMusicSelected} sélection{totalMusicSelected > 1 ? 's' : ''} · {settings.rounds} manches · niveau {settings.difficulty}
-        </p>
-        <ul className="flex flex-wrap justify-center gap-2">
-          {guests.map((player) => (
-            <li key={player.id} className="rounded-full bg-white/10 px-3 py-1 text-sm">
-              {player.name}
-            </li>
-          ))}
-        </ul>
+        <div>
+          <h2 className="text-2xl font-bold">En attente du lancement…</h2>
+          <p className="mt-1 text-sm text-white/60">L'hôte va bientôt lancer la partie !</p>
+        </div>
+
+        <SelectionSummary settings={settings} themes={themes} />
+
+        <div className="card w-full text-left">
+          <h3 className="mb-2 text-sm font-bold text-white/70">Joueurs connectés ({players.length})</h3>
+          <ul className="flex flex-wrap gap-2">
+            {players.map((player) => (
+              <li
+                key={player.id}
+                className={`rounded-full px-3 py-1 text-sm font-medium ${
+                  player.id === currentPlayerId
+                    ? 'border border-neon/40 bg-neon/20 text-neon'
+                    : 'bg-white/10 text-white/80'
+                }`}
+              >
+                {player.name} {player.isHost && <span className="text-xs text-white/50">(Hôte)</span>}
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
     );
   }
@@ -386,7 +402,7 @@ export default function Lobby({
                 id: 'phones' as const,
                 label: 'Téléphones',
                 hint: 'un seul buzz par manche',
-                action: () => onUpdate({ mode: 'phones', hostPlays: false }),
+                action: () => onUpdate({ mode: 'phones' }),
               },
               {
                 id: 'solo' as const,
@@ -398,13 +414,13 @@ export default function Lobby({
                 id: 'teams' as const,
                 label: 'Équipes',
                 hint: 'score commun par équipe',
-                action: () => onUpdate({ mode: 'teams', hostPlays: false, teamCount: teamCount }),
+                action: () => onUpdate({ mode: 'teams', teamCount: teamCount }),
               },
               {
                 id: 'course' as const,
                 label: 'Course',
-                hint: 'tout le monde buzze, la musique continue',
-                action: () => onUpdate({ mode: 'course', hostPlays: false }),
+                hint: 'tout le monde tape sa réponse',
+                action: () => onUpdate({ mode: 'course' }),
               },
             ].map((format) => (
               <button
@@ -424,9 +440,8 @@ export default function Lobby({
           </div>
           {mode === 'course' && (
             <p className="mt-3 text-sm text-white/60">
-              Chacun peut buzzer quand il veut : plus tu buzzes tôt, plus la réponse complète rapporte (3 pts
-              avant 10s, 2 pts avant 20s, 1 pt ensuite). Une réponse partielle vaut 1 pt, une fausse t’élimine
-              pour la manche.
+              Chacun tape sa réponse directement : plus tu réponds tôt, plus la réponse rapporte (3 pts
+              avant 10s, 2 pts avant 20s, 1 pt ensuite).
             </p>
           )}
           {isHost && (
@@ -465,63 +480,73 @@ export default function Lobby({
           )}
         </section>
 
-        {(mode === 'solo' || mode === 'teams' || mode === 'course') && (
-          <section className="card">
-            <h2 className="text-xl font-bold">Réglages du format</h2>
-            {mode === 'solo' && (
-              <div className="mt-4">
-                <span className="text-sm text-white/60">Buzzer</span>
-                <div className="mt-2 grid max-w-md grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => onUpdate({ buzzerEnabled: true })}
-                    className={`rounded-xl border px-3 py-2 text-left text-sm ${
-                      settings.buzzerEnabled ? 'border-neon bg-neon/20' : 'border-white/10 bg-white/5 text-white/70'
-                    }`}
-                  >
-                    <span className="block font-semibold">Avec buzzer</span>
-                    <span className="mt-1 block text-xs text-white/55">On buzze et on tape la réponse.</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onUpdate({ buzzerEnabled: false })}
-                    className={`rounded-xl border px-3 py-2 text-left text-sm ${
-                      !settings.buzzerEnabled ? 'border-neon bg-neon/20' : 'border-white/10 bg-white/5 text-white/70'
-                    }`}
-                  >
-                    <span className="block font-semibold">Sans buzzer</span>
-                    <span className="mt-1 block text-xs text-white/55">
-                      Les extraits passent, on crie à voix haute, pas de score.
-                    </span>
-                  </button>
-                </div>
+        <section className="card">
+          <h2 className="text-xl font-bold">Réglages du format</h2>
+          {mode === 'solo' ? (
+            <div className="mt-4">
+              <span className="text-sm text-white/60">Buzzer</span>
+              <div className="mt-2 grid max-w-md grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => onUpdate({ buzzerEnabled: true })}
+                  className={`rounded-xl border px-3 py-2 text-left text-sm ${
+                    settings.buzzerEnabled ? 'border-neon bg-neon/20' : 'border-white/10 bg-white/5 text-white/70'
+                  }`}
+                >
+                  <span className="block font-semibold">Avec buzzer</span>
+                  <span className="mt-1 block text-xs text-white/55">On buzze et on tape la réponse.</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onUpdate({ buzzerEnabled: false })}
+                  className={`rounded-xl border px-3 py-2 text-left text-sm ${
+                    !settings.buzzerEnabled ? 'border-neon bg-neon/20' : 'border-white/10 bg-white/5 text-white/70'
+                  }`}
+                >
+                  <span className="block font-semibold">Sans buzzer</span>
+                  <span className="mt-1 block text-xs text-white/55">
+                    Les extraits passent, on crie à voix haute, pas de score.
+                  </span>
+                </button>
               </div>
-            )}
-            {(mode === 'teams' || mode === 'course') && (
-              <div className="mt-4">
-                <span className="text-sm text-white/60">Rôle de l’hôte</span>
-                <div className="mt-2 grid max-w-sm grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => onUpdate({ hostPlays: false })}
-                    className={`rounded-xl border px-3 py-2 text-sm ${
-                      !settings.hostPlays ? 'border-neon bg-neon/20' : 'border-white/10 bg-white/5 text-white/70'
-                    }`}
-                  >
-                    Arbitre
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onUpdate({ hostPlays: true })}
-                    className={`rounded-xl border px-3 py-2 text-sm ${
-                      settings.hostPlays ? 'border-neon bg-neon/20' : 'border-white/10 bg-white/5 text-white/70'
-                    }`}
-                  >
-                    Joue
-                  </button>
-                </div>
+            </div>
+          ) : (
+            <div className="mt-4">
+              <span className="text-sm text-white/60">Rôle de l’hôte (cet écran)</span>
+              <div className="mt-2 grid max-w-md grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => onUpdate({ hostPlays: false })}
+                  className={`rounded-xl border px-3 py-2.5 text-left text-sm transition ${
+                    !settings.hostPlays
+                      ? 'border-neon bg-neon/20 text-white'
+                      : 'border-white/10 bg-white/5 text-white/70 hover:bg-white/10'
+                  }`}
+                >
+                  <span className="block font-semibold">Arbitre / DJ</span>
+                  <span className="mt-0.5 block text-xs text-white/50">
+                    Diffuse la musique, seuls les joueurs sur téléphone buzzent.
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onUpdate({ hostPlays: true })}
+                  className={`rounded-xl border px-3 py-2.5 text-left text-sm transition ${
+                    settings.hostPlays
+                      ? 'border-neon bg-neon/20 text-white'
+                      : 'border-white/10 bg-white/5 text-white/70 hover:bg-white/10'
+                  }`}
+                >
+                  <span className="block font-semibold">Joue aussi</span>
+                  <span className="mt-0.5 block text-xs text-white/50">
+                    L’hôte a aussi un buzzer sur l’écran pour participer.
+                  </span>
+                </button>
               </div>
-            )}
+            </div>
+          )}
+
+          {settings.hostPlays && (
             <label className="mt-4 block max-w-md">
               <span className="text-sm text-white/60">
                 {mode === 'solo' ? 'Nom de l’équipe' : 'Pseudo de l’hôte'}
@@ -535,8 +560,8 @@ export default function Lobby({
                 className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white outline-none focus:border-neon"
               />
             </label>
-          </section>
-        )}
+          )}
+        </section>
 
         {mode === 'teams' && (
           <section className="card">
@@ -664,8 +689,25 @@ export default function Lobby({
           </section>
         )}
 
-        <button className="btn-primary w-full text-lg" disabled={!canStart} onClick={onStart}>
-          {canStart
+        <button
+          className="btn-primary relative w-full overflow-hidden text-lg"
+          disabled={!canStart || isStarting}
+          onClick={onStart}
+        >
+          {isStarting ? (
+            <span className="flex items-center justify-center gap-3">
+              <svg
+                className="h-5 w-5 animate-spin"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+              </svg>
+              Préparation de la playlist…
+            </span>
+          ) : canStart
             ? `Lancer la partie (${mode === 'solo' ? '1 joueur' : `${teamBuzzers} buzzer${teamBuzzers > 1 ? 's' : ''}`})`
             : totalMusicSelected === 0
               ? 'Choisissez au moins une époque, un style ou un thème'
@@ -696,12 +738,22 @@ export default function Lobby({
               <li key={player.id} className="flex items-center justify-between gap-2 rounded-lg bg-white/5 px-3 py-2">
                 <div className="min-w-0">
                   <span className="block truncate">{player.name}</span>
-                  {mode === 'teams' && (
+                  {mode === 'teams' ? (
                     <span className="text-xs text-white/45">
                       {player.isHost && !settings.hostPlays
                         ? 'Arbitre'
                         : teamLabels[(player.team ?? 0) - 1] ?? 'Sans équipe'}
                     </span>
+                  ) : (
+                    player.isHost && (
+                      <span className="text-xs text-white/45">
+                        {mode === 'solo'
+                          ? 'Joueur (écran)'
+                          : settings.hostPlays
+                            ? 'Joueur (hôte)'
+                            : 'Arbitre / DJ'}
+                      </span>
+                    )
                   )}
                 </div>
                 {!player.isHost && (
@@ -763,5 +815,111 @@ function PlayerPill({ player, selected, onSelect, onKick }: PlayerPillProps) {
         </span>
       )}
     </button>
+  );
+}
+
+function SelectionSummary({
+  settings,
+  themes,
+}: {
+  settings: RoomState['settings'];
+  themes: Theme[];
+}) {
+  const selectedDecades = DECADES_LIST.filter((d) => settings.yearRanges?.includes(d.id));
+  const selectedGenres = GENRES_LIST.filter((g) => settings.genres?.includes(g.id));
+  const selectedThemes = themes.filter((t) => settings.themes?.includes(t.id));
+  const difficultyObj = DIFFICULTIES.find((d) => d.id === settings.difficulty);
+
+  const modeLabels: Record<string, string> = {
+    phones: '📱 Téléphones',
+    teams: '👥 Équipes',
+    course: '🏁 Course contre la montre',
+    solo: '🕹️ Solo',
+  };
+
+  const hasSelections =
+    selectedDecades.length > 0 || selectedGenres.length > 0 || selectedThemes.length > 0;
+
+  return (
+    <section className="card w-full space-y-4 border border-white/10 bg-white/5 p-5 text-left shadow-lg backdrop-blur-md">
+      <div className="flex items-center justify-between border-b border-white/10 pb-3">
+        <h3 className="flex items-center gap-2 font-bold text-neon">
+          <span>⚙️</span> Configuration de la partie
+        </h3>
+        <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-semibold text-white/70">
+          {settings.rounds} manches · {settings.clipSeconds}s
+        </span>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 text-xs">
+        <div className="rounded-lg bg-black/20 p-2.5">
+          <span className="mb-0.5 block text-white/50">Mode</span>
+          <span className="font-semibold text-white">{modeLabels[settings.mode] ?? settings.mode}</span>
+        </div>
+        <div className="rounded-lg bg-black/20 p-2.5">
+          <span className="mb-0.5 block text-white/50">Difficulté</span>
+          <span className="font-semibold text-white">
+            {difficultyObj?.label ?? settings.difficulty}
+          </span>
+        </div>
+      </div>
+
+      <div className="space-y-3 pt-1">
+        {selectedDecades.length > 0 && (
+          <div>
+            <span className="mb-1.5 block text-xs font-semibold text-white/50">📅 Époques & Décennies</span>
+            <div className="flex flex-wrap gap-1.5">
+              {selectedDecades.map((dec) => (
+                <span
+                  key={dec.id}
+                  className="inline-flex items-center gap-1 rounded-lg bg-white/10 px-2.5 py-1 text-xs font-medium text-white"
+                >
+                  <span>{dec.emoji}</span>
+                  <span>{dec.label}</span>
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {selectedGenres.length > 0 && (
+          <div>
+            <span className="mb-1.5 block text-xs font-semibold text-white/50">🎸 Styles musicaux</span>
+            <div className="flex flex-wrap gap-1.5">
+              {selectedGenres.map((gen) => (
+                <span
+                  key={gen.id}
+                  className="inline-flex items-center gap-1 rounded-lg bg-white/10 px-2.5 py-1 text-xs font-medium text-white"
+                >
+                  <span>{gen.emoji}</span>
+                  <span>{gen.label}</span>
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {selectedThemes.length > 0 && (
+          <div>
+            <span className="mb-1.5 block text-xs font-semibold text-white/50">🎬 Thèmes culturels</span>
+            <div className="flex flex-wrap gap-1.5">
+              {selectedThemes.map((thm) => (
+                <span
+                  key={thm.id}
+                  className="inline-flex items-center gap-1 rounded-lg bg-white/10 px-2.5 py-1 text-xs font-medium text-white"
+                >
+                  <span>{thm.emoji}</span>
+                  <span>{thm.label}</span>
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {!hasSelections && (
+          <p className="text-xs italic text-white/40">Aucune sélection spécifique (Top hits généraux).</p>
+        )}
+      </div>
+    </section>
   );
 }
