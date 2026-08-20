@@ -255,6 +255,7 @@ export class Room {
       roundAttempts: this.phase === 'reveal' || this.phase === 'buzzed' ? this.roundAttempts : [],
       awarded: this.awarded,
       foundFields: this.foundFields,
+      serverTime: Date.now(),
     };
   }
 

@@ -40,7 +40,7 @@ export default function HostGame({
 
   const clipTotal = state.settings.clipSeconds ?? 30;
 
-  // Exact timestamp-based smooth remaining seconds
+  // Exact timestamp-based smooth remaining seconds with clock calibration
   const [smoothRemaining, setSmoothRemaining] = useState<number>(state.remainingSeconds);
 
   useEffect(() => {
@@ -50,18 +50,25 @@ export default function HostGame({
       );
       return;
     }
+
+    const serverOffset = (state.serverTime ?? Date.now()) - Date.now();
     let raf = 0;
     const tick = () => {
-      if (state.phase !== 'listening' || !state.clipEndsAt) return;
-      const remaining = Math.max(0, (state.clipEndsAt - Date.now()) / 1000);
-      setSmoothRemaining(remaining);
+      if (state.phase !== 'listening') return;
+      if (state.clipEndsAt) {
+        const estimatedServerNow = Date.now() + serverOffset;
+        const remaining = Math.max(0, (state.clipEndsAt - estimatedServerNow) / 1000);
+        setSmoothRemaining(remaining);
+      } else {
+        setSmoothRemaining(state.remainingSeconds);
+      }
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => {
       if (raf) cancelAnimationFrame(raf);
     };
-  }, [state.phase, state.clipEndsAt, state.remainingSeconds, clipTotal]);
+  }, [state.phase, state.clipEndsAt, state.serverTime, clipTotal]);
 
   const pct = Math.max(0, Math.min(100, (smoothRemaining / clipTotal) * 100));
 
@@ -134,7 +141,11 @@ export default function HostGame({
             <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-white/6">
               <div
                 className="h-full bg-gradient-to-r from-accent to-neon"
-                style={{ width: `${pct}%`, transition: 'width 120ms linear' }}
+                style={{
+                  width: `${pct}%`,
+                  transition: state.phase === 'listening' ? 'none' : 'width 200ms ease-out',
+                  willChange: 'width',
+                }}
               />
             </div>
             {isCourse && canSubmitAnswer && (

@@ -152,6 +152,8 @@ export interface RoomState {
   clipEndsAt: number | null;
   /** Remaining seconds on the current clip (0 when not playing). */
   remainingSeconds: number;
+  /** Server timestamp when the state payload was generated (used for clock calibration). */
+  serverTime?: number;
 }
 
 /** One answer sent during a `course` round, revealed at the end of the round. */

@@ -109,7 +109,7 @@ export default function PlayerGame({
   const hasCover = state.phase === 'reveal' && state.answer?.cover && !coverFailed;
   const clipTotal = state.settings.clipSeconds ?? 30;
 
-  // Exact timestamp-based smooth remaining seconds
+  // Exact timestamp-based smooth remaining seconds with clock calibration
   const [smoothRemaining, setSmoothRemaining] = useState<number>(state.remainingSeconds);
 
   useEffect(() => {
@@ -119,18 +119,25 @@ export default function PlayerGame({
       );
       return;
     }
+
+    const serverOffset = (state.serverTime ?? Date.now()) - Date.now();
     let raf = 0;
     const tick = () => {
-      if (state.phase !== 'listening' || !state.clipEndsAt) return;
-      const remaining = Math.max(0, (state.clipEndsAt - Date.now()) / 1000);
-      setSmoothRemaining(remaining);
+      if (state.phase !== 'listening') return;
+      if (state.clipEndsAt) {
+        const estimatedServerNow = Date.now() + serverOffset;
+        const remaining = Math.max(0, (state.clipEndsAt - estimatedServerNow) / 1000);
+        setSmoothRemaining(remaining);
+      } else {
+        setSmoothRemaining(state.remainingSeconds);
+      }
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => {
       if (raf) cancelAnimationFrame(raf);
     };
-  }, [state.phase, state.clipEndsAt, state.remainingSeconds, clipTotal]);
+  }, [state.phase, state.clipEndsAt, state.serverTime, clipTotal]);
 
   const pct = Math.max(0, Math.min(100, (smoothRemaining / clipTotal) * 100));
 
@@ -146,6 +153,26 @@ export default function PlayerGame({
         </span>
       </header>
 
+      {/* Barre de temps globale pour le joueur en mode avec buzzer */}
+      {(state.phase === 'listening' || state.phase === 'buzzed') && !isCourse && (
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between text-xs font-semibold text-white/60">
+            <span>{state.phase === 'buzzed' ? 'Buzzer en cours' : 'Extrait en cours'}</span>
+            <span>{Math.ceil(smoothRemaining)}s</span>
+          </div>
+          <div className="h-2 w-full overflow-hidden rounded-full bg-white/10">
+            <div
+              className="h-full bg-gradient-to-r from-accent to-neon"
+              style={{
+                width: `${pct}%`,
+                transition: state.phase === 'listening' ? 'none' : 'width 200ms ease-out',
+                willChange: 'width',
+              }}
+            />
+          </div>
+        </div>
+      )}
+
       {/* MODE COURSE : Saisie directe sans buzzer inutile */}
       {isCourse && state.phase === 'listening' ? (
         <div className="card space-y-4 text-center">
@@ -157,7 +184,11 @@ export default function PlayerGame({
           <div className="h-2 w-full overflow-hidden rounded-full bg-white/10">
             <div
               className="h-full bg-gradient-to-r from-accent to-neon"
-              style={{ width: `${pct}%`, transition: 'width 100ms linear' }}
+              style={{
+                width: `${pct}%`,
+                transition: state.phase === 'listening' ? 'none' : 'width 200ms ease-out',
+                willChange: 'width',
+              }}
             />
           </div>
 
@@ -232,7 +263,7 @@ export default function PlayerGame({
                       transform: 'rotate(-90deg)',
                       transformOrigin: '50% 50%',
                       strokeDashoffset: dashOffset,
-                      transition: 'stroke-dashoffset 100ms linear',
+                      transition: state.phase === 'listening' ? 'none' : 'stroke-dashoffset 200ms ease-out',
                       willChange: 'stroke-dashoffset',
                     }}
                   />
