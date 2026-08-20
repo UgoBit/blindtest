@@ -232,9 +232,23 @@ export class Room {
       buzzedBy: this.buzzedBy,
       answer:
         this.phase === 'reveal' && track
-          ? { title: track.title, artist: track.artist, cover: track.cover }
+          ? {
+              title: track.title,
+              artist: track.artist,
+              cover: track.cover,
+              work: track.work ?? null,
+              workCategory: track.workCategory ?? null,
+            }
           : null,
-      track: track ? { index: this.round + 1, total: this.playlist.length, cover: null } : null,
+      track: track
+        ? {
+            index: this.round + 1,
+            total: this.playlist.length,
+            cover: null,
+            workCategory: track.workCategory ?? null,
+            isSingleField: track.isSingleField ?? false,
+          }
+        : null,
       round: this.round,
       remainingSeconds: Math.ceil(remainingSeconds),
       clipEndsAt: this.phase === 'listening' ? this.clipEndsAt : null,
@@ -256,6 +270,8 @@ export class Room {
       awarded: this.awarded,
       foundFields: this.foundFields,
       serverTime: Date.now(),
+      isSingleField: track?.isSingleField ?? false,
+      workCategory: track?.workCategory ?? null,
     };
   }
 
@@ -333,6 +349,9 @@ export class Room {
       id: track.id,
       title: track.title,
       artist: track.artist,
+      work: track.work,
+      workCategory: track.workCategory,
+      isSingleField: track.isSingleField,
       previewUrl: previewUrl ?? track.previewUrl,
       startAt: this.elapsedSeconds(),
     });
@@ -345,6 +364,8 @@ export class Room {
       index: this.round + 1,
       total: this.playlist.length,
       cover: null,
+      workCategory: track.workCategory,
+      isSingleField: track.isSingleField,
       previewUrl: previewUrl ?? track.previewUrl,
       startAt: this.elapsedSeconds(),
     });
@@ -475,9 +496,28 @@ export class Room {
   }
 
   private judgeAnswer(answer: { title: string; artist: string }): { title: boolean; artist: boolean } {
+    const track = this.currentTrack;
+    if (!track) return { title: false, artist: false };
+
+    // Mode Thème Culte / 1 seul champ : accepte l'œuvre, le titre ou l'artiste
+    if (track.isSingleField || track.work) {
+      const userText = (answer.title || answer.artist).trim();
+      if (!userText) return { title: false, artist: false };
+
+      const matchesWork = track.work ? answerMatches(userText, track.work, 'work', track.workAliases) : false;
+      const matchesTitle = answerMatches(userText, track.title, 'title');
+      const matchesArtist = answerMatches(userText, track.artist, 'artist');
+
+      if (matchesWork || matchesTitle || matchesArtist) {
+        return { title: true, artist: true };
+      }
+      return { title: false, artist: false };
+    }
+
+    // Mode Standard (Titre + Artiste)
     return {
-      title: !!answer.title && answerMatches(answer.title, this.currentTrack?.title ?? '', 'title'),
-      artist: !!answer.artist && answerMatches(answer.artist, this.currentTrack?.artist ?? '', 'artist'),
+      title: !!answer.title && answerMatches(answer.title, track.title, 'title'),
+      artist: !!answer.artist && answerMatches(answer.artist, track.artist, 'artist'),
     };
   }
 

@@ -1,5 +1,6 @@
 import type { Difficulty } from '../../shared/types.js';
 import { DECADE_QUERIES, GENRE_SOURCES, THEME_BY_ID, type ThemeDefinition, type ThemeSource } from './themes.js';
+import { lookupWork } from './cultWorks.js';
 
 export interface Track {
   id: string;
@@ -9,6 +10,10 @@ export interface Track {
   previewUrl: string;
   /** Deezer popularity score (0-1 000 000), used to grade difficulty. */
   rank: number;
+  work?: string | null;
+  workCategory?: string | null;
+  workAliases?: string[];
+  isSingleField?: boolean;
 }
 
 interface DeezerTrack {
@@ -18,7 +23,7 @@ interface DeezerTrack {
   preview?: string;
   rank?: number;
   artist?: { name?: string };
-  album?: { cover_medium?: string; cover_big?: string; release_date?: string };
+  album?: { id?: number; title?: string; cover_medium?: string; cover_big?: string; release_date?: string };
 }
 
 interface DeezerPlaylist {
@@ -42,8 +47,11 @@ async function fetchJson<T>(url: string): Promise<T | null> {
   }
 }
 
-function toTrack(t: DeezerTrack): Track | null {
+function toTrack(t: DeezerTrack, themeCategory?: string): Track | null {
   if (!t.preview || !t.artist?.name) return null;
+  const cult = lookupWork(t.title_short ?? t.title, t.artist.name, t.album?.title, themeCategory);
+  const isCulture = ['films', 'disney', 'dessins-animes', 'jeux-video', 'pub'].includes(themeCategory ?? '');
+
   return {
     id: String(t.id),
     title: t.title_short ?? t.title,
@@ -51,6 +59,10 @@ function toTrack(t: DeezerTrack): Track | null {
     cover: t.album?.cover_big ?? t.album?.cover_medium ?? null,
     previewUrl: t.preview,
     rank: t.rank ?? 0,
+    work: cult?.work ?? null,
+    workCategory: cult?.category ?? (isCulture ? themeCategory : null),
+    workAliases: cult?.aliases ?? [],
+    isSingleField: !!cult || isCulture,
   };
 }
 
@@ -168,7 +180,18 @@ export function singleAnswerMatches(input: string, expected: string): boolean {
  * "Goldman" for "Jean-Jacques Goldman", "Bowie" for "David Bowie"), common aliases,
  * prefixes dropped (e.g. "Snake" for "DJ Snake"), featurings, and typo tolerance.
  */
-export function answerMatches(input: string, expected: string, kind: 'title' | 'artist'): boolean {
+export function answerMatches(
+  input: string,
+  expected: string,
+  kind: 'title' | 'artist' | 'work',
+  aliases?: string[],
+): boolean {
+  if (kind === 'work') {
+    if (singleAnswerMatches(input, expected)) return true;
+    if (aliases?.some((alias) => singleAnswerMatches(input, alias))) return true;
+    return false;
+  }
+
   if (kind === 'artist') {
     const rawInput = normalizeAnswer(input);
     if (!rawInput) return false;
@@ -253,11 +276,11 @@ async function fetchFromSource(
   extraQuery = '',
 ): Promise<Track[]> {
   const tracks: Track[] = [];
-  if (source.kind === 'chart') {
+  if (source.kind === 'chart' && !extraQuery) {
     const genreId = source.genreId;
     const data = await fetchJson<{ data?: DeezerTrack[] }>(`${DEEZER}/chart/${genreId}/tracks?limit=100`);
     for (const t of data?.data ?? []) {
-      const track = toTrack(t);
+      const track = toTrack(t, themeId);
       if (track && isAcceptableTrack(track)) tracks.push(track);
     }
     const radios = await fetchJson<{ data?: { id: number }[] }>(`${DEEZER}/genre/${genreId}/radios`);
@@ -266,14 +289,16 @@ async function fetchFromSource(
         `${DEEZER}/radio/${radio.id}/tracks?limit=50`,
       );
       for (const t of radioTracks?.data ?? []) {
-        const track = toTrack(t);
+        const track = toTrack(t, themeId);
         if (track && isAcceptableTrack(track)) tracks.push(track);
       }
     }
   } else {
+    const queries = source.kind === 'playlists' ? source.queries : [`${themeId} ${extraQuery}`];
     const conflictRegex = CONFLICTING_DECADE_REGEX[themeId];
-    for (const query of source.queries) {
-      const composed = extraQuery ? `${query} ${extraQuery}`.trim() : query;
+
+    for (const query of queries) {
+      const composed = extraQuery && !query.includes(extraQuery) ? `${query} ${extraQuery}`.trim() : query;
 
       // 1) Search playlists
       const found = await fetchJson<{ data?: DeezerPlaylist[] }>(
@@ -291,7 +316,7 @@ async function fetchFromSource(
           `${DEEZER}/playlist/${playlist.id}/tracks?limit=100`,
         );
         for (const t of data?.data ?? []) {
-          const track = toTrack(t);
+          const track = toTrack(t, themeId);
           if (track && isAcceptableTrack(track)) tracks.push(track);
         }
       }
@@ -302,7 +327,7 @@ async function fetchFromSource(
           `${DEEZER}/search?q=${encodeURIComponent(composed)}&limit=40`,
         );
         for (const t of direct?.data ?? []) {
-          const track = toTrack(t);
+          const track = toTrack(t, themeId);
           if (track && isAcceptableTrack(track)) tracks.push(track);
         }
       }
@@ -317,9 +342,9 @@ async function loadPool(theme: ThemeDefinition, opts?: { yearRanges?: string[]; 
   const cached = poolCache.get(cacheKey);
   if (cached && Date.now() - cached.at < POOL_TTL_MS) return cached.tracks;
 
-  // Only append decade extra query when combining genres with decades, not on decade themes themselves
+  // Append decade extra query when combining genres or culture themes with decades
   let extraQuery = '';
-  if (theme.category === 'genre' && opts?.yearRanges?.length) {
+  if ((theme.category === 'genre' || theme.category === 'culture') && opts?.yearRanges?.length) {
     extraQuery = opts.yearRanges.join(' ');
   }
 

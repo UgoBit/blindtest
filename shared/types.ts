@@ -60,6 +60,10 @@ export interface PublicTrack {
   index: number;
   total: number;
   cover: string | null;
+  /** Category badge for cult themes (e.g. 'pub', 'films', 'disney', 'dessins-animes', 'jeux-video') */
+  workCategory?: string | null;
+  /** When true, only one single answer field is required (work/title/artist) */
+  isSingleField?: boolean;
 }
 
 /** Track info sent to the host only: contains the answer and the audio URL. */
@@ -67,6 +71,7 @@ export interface HostTrack extends PublicTrack {
   id: string;
   title: string;
   artist: string;
+  work?: string | null;
   previewUrl: string;
   /** Offset in seconds the host should resume the clip from (0 for a fresh round). */
   startAt: number;
@@ -126,7 +131,7 @@ export interface RoomState {
   /** Player who currently holds the buzzer, if any. */
   buzzedBy: string | null;
   /** Revealed answer, only set during the `reveal` phase. */
-  answer: { title: string; artist: string; cover: string | null } | null;
+  answer: { title: string; artist: string; cover: string | null; work?: string | null; workCategory?: string | null } | null;
   track: PublicTrack | null;
   round: number;
   teamScores: TeamScore[];
@@ -154,6 +159,10 @@ export interface RoomState {
   remainingSeconds: number;
   /** Server timestamp when the state payload was generated (used for clock calibration). */
   serverTime?: number;
+  /** When true, the current track only requires 1 answer field (e.g. cult works, pubs) */
+  isSingleField?: boolean;
+  /** Work category (e.g. 'pub', 'films', 'disney', 'dessins-animes', 'jeux-video') */
+  workCategory?: string | null;
 }
 
 /** One answer sent during a `course` round, revealed at the end of the round. */

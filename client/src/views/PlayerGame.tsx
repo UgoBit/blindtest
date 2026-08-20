@@ -10,6 +10,14 @@ interface Props {
   onSubmitAnswer: (answer: { title: string; artist: string }) => void;
 }
 
+const CATEGORY_BADGES: Record<string, { label: string; emoji: string; color: string }> = {
+  pub: { label: 'Publicité', emoji: '📢', color: 'bg-amber-500/20 text-amber-300 border-amber-500/30' },
+  films: { label: 'Musique de film', emoji: '🎬', color: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30' },
+  disney: { label: 'Disney & Pixar', emoji: '🏰', color: 'bg-sky-500/20 text-sky-300 border-sky-500/30' },
+  'dessins-animes': { label: 'Série & Animé', emoji: '📺', color: 'bg-purple-500/20 text-purple-300 border-purple-500/30' },
+  'jeux-video': { label: 'Jeu vidéo', emoji: '🎮', color: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' },
+};
+
 export default function PlayerGame({
   state,
   playerId,
@@ -49,6 +57,9 @@ export default function PlayerGame({
   const answeredNames = state.answeredBy
     .map((id) => state.players.find((player) => player.id === id)?.name)
     .filter((name): name is string => !!name);
+
+  const workCat = state.workCategory ?? state.track?.workCategory;
+  const badge = workCat ? CATEGORY_BADGES[workCat] : null;
 
   useEffect(() => {
     if (!canSubmit || !state.responseDeadline) {
@@ -148,9 +159,17 @@ export default function PlayerGame({
     <div className="mx-auto flex min-h-screen max-w-md flex-col gap-5 px-4 py-6">
       <header className="flex items-center justify-between text-sm text-white/70">
         <span className="font-semibold">{me?.name}</span>
-        <span className="rounded-full bg-white/10 px-2.5 py-1 text-xs font-bold text-accent">
-          Manche {state.track?.index ?? 0}/{state.track?.total ?? 0} · {displayedScore} pts
-        </span>
+        <div className="flex items-center gap-2">
+          {badge && (
+            <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-bold uppercase tracking-wider ${badge.color}`}>
+              <span>{badge.emoji}</span>
+              <span>{badge.label}</span>
+            </span>
+          )}
+          <span className="rounded-full bg-white/10 px-2.5 py-1 text-xs font-bold text-accent">
+            Manche {state.track?.index ?? 0}/{state.track?.total ?? 0} · {displayedScore} pts
+          </span>
+        </div>
       </header>
 
       {/* Barre de temps globale pour le joueur en mode avec buzzer */}
@@ -211,9 +230,10 @@ export default function PlayerGame({
           ) : (
             <AnswerForm
               className="space-y-3 text-left"
-              hint="Tape vite : 3 pts si <10s, 2 pts si <20s, 1 pt ensuite"
+              hint={state.isSingleField ? "Trouve l'œuvre, le titre ou l'artiste !" : "Tape vite : 3 pts si <10s, 2 pts si <20s, 1 pt ensuite"}
               title={answerTitle}
               artist={answerArtist}
+              singleField={state.isSingleField}
               onTitle={setAnswerTitle}
               onArtist={setAnswerArtist}
               onSubmit={() => onSubmitAnswer({ title: answerTitle, artist: answerArtist })}
@@ -326,9 +346,14 @@ export default function PlayerGame({
             )}
             {state.phase === 'reveal' && (
               <>
-                <span className="text-2xl normal-case tracking-normal">{state.answer?.title ?? 'Réponse'}</span>
+                {state.answer?.work && (
+                  <span className="rounded-lg bg-neon/20 px-3 py-1 text-sm font-bold uppercase tracking-wider text-neon">
+                    {state.answer.work}
+                  </span>
+                )}
+                <span className="text-xl font-bold normal-case tracking-normal">{state.answer?.title ?? 'Réponse'}</span>
                 {state.answer?.artist && (
-                  <span className="text-base font-medium normal-case tracking-normal text-white/75">
+                  <span className="text-sm font-medium normal-case tracking-normal text-white/75">
                     {state.answer.artist}
                   </span>
                 )}
@@ -347,32 +372,50 @@ export default function PlayerGame({
             <span className="font-semibold text-neon">Résultat</span>
           </div>
           <div className="space-y-1.5 pt-1">
-            <div className="flex items-center justify-between rounded-lg bg-white/5 px-3 py-2">
-              <span className="truncate text-white/80">
-                <span className="text-xs text-white/40">Titre : </span>
-                {state.submittedAnswer.title || <span className="italic text-white/30">non renseigné</span>}
-              </span>
-              <span
-                className={`ml-2 shrink-0 text-xs font-bold ${
-                  state.answerVerdict.title ? 'text-emerald-300' : 'text-rose-400'
-                }`}
-              >
-                {state.answerVerdict.title ? '✓ Validé' : '✗ Incorrect'}
-              </span>
-            </div>
-            <div className="flex items-center justify-between rounded-lg bg-white/5 px-3 py-2">
-              <span className="truncate text-white/80">
-                <span className="text-xs text-white/40">Artiste : </span>
-                {state.submittedAnswer.artist || <span className="italic text-white/30">non renseigné</span>}
-              </span>
-              <span
-                className={`ml-2 shrink-0 text-xs font-bold ${
-                  state.answerVerdict.artist ? 'text-emerald-300' : 'text-rose-400'
-                }`}
-              >
-                {state.answerVerdict.artist ? '✓ Validé' : '✗ Incorrect'}
-              </span>
-            </div>
+            {state.isSingleField ? (
+              <div className="flex items-center justify-between rounded-lg bg-white/5 px-3 py-2">
+                <span className="truncate text-white/80">
+                  <span className="text-xs text-white/40">Proposition : </span>
+                  {state.submittedAnswer.title || state.submittedAnswer.artist || <span className="italic text-white/30">non renseigné</span>}
+                </span>
+                <span
+                  className={`ml-2 shrink-0 text-xs font-bold ${
+                    state.answerVerdict.title || state.answerVerdict.artist ? 'text-emerald-300' : 'text-rose-400'
+                  }`}
+                >
+                  {state.answerVerdict.title || state.answerVerdict.artist ? '✓ Validé' : '✗ Incorrect'}
+                </span>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between rounded-lg bg-white/5 px-3 py-2">
+                  <span className="truncate text-white/80">
+                    <span className="text-xs text-white/40">Titre : </span>
+                    {state.submittedAnswer.title || <span className="italic text-white/30">non renseigné</span>}
+                  </span>
+                  <span
+                    className={`ml-2 shrink-0 text-xs font-bold ${
+                      state.answerVerdict.title ? 'text-emerald-300' : 'text-rose-400'
+                    }`}
+                  >
+                    {state.answerVerdict.title ? '✓ Validé' : '✗ Incorrect'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between rounded-lg bg-white/5 px-3 py-2">
+                  <span className="truncate text-white/80">
+                    <span className="text-xs text-white/40">Artiste : </span>
+                    {state.submittedAnswer.artist || <span className="italic text-white/30">non renseigné</span>}
+                  </span>
+                  <span
+                    className={`ml-2 shrink-0 text-xs font-bold ${
+                      state.answerVerdict.artist ? 'text-emerald-300' : 'text-rose-400'
+                    }`}
+                  >
+                    {state.answerVerdict.artist ? '✓ Validé' : '✗ Incorrect'}
+                  </span>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -386,6 +429,9 @@ export default function PlayerGame({
           artist={answerArtist}
           titleLocked={titleLocked}
           artistLocked={artistLocked}
+          singleField={state.isSingleField}
+          fieldLabel={state.isSingleField ? "Œuvre, Titre ou Artiste" : undefined}
+          fieldPlaceholder={state.isSingleField ? "Ex: Dior, Titanic, Mario, Pokemon, titre..." : undefined}
           onTitle={setAnswerTitle}
           onArtist={setAnswerArtist}
           onSubmit={() => onSubmitAnswer({ title: answerTitle, artist: answerArtist })}

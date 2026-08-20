@@ -14,6 +14,14 @@ interface Props {
   onCancel: () => void;
 }
 
+const CATEGORY_BADGES: Record<string, { label: string; emoji: string; color: string }> = {
+  pub: { label: 'Publicité', emoji: '📢', color: 'bg-amber-500/20 text-amber-300 border-amber-500/30' },
+  films: { label: 'Musique de film', emoji: '🎬', color: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30' },
+  disney: { label: 'Disney & Pixar', emoji: '🏰', color: 'bg-sky-500/20 text-sky-300 border-sky-500/30' },
+  'dessins-animes': { label: 'Série & Dessin animé', emoji: '📺', color: 'bg-purple-500/20 text-purple-300 border-purple-500/30' },
+  'jeux-video': { label: 'Jeu vidéo', emoji: '🎮', color: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' },
+};
+
 export default function HostGame({
   state,
   onCorrectAnswer,
@@ -39,6 +47,8 @@ export default function HostGame({
   const [remainingResponseSeconds, setRemainingResponseSeconds] = useState(0);
 
   const clipTotal = state.settings.clipSeconds ?? 30;
+  const workCat = state.workCategory ?? state.track?.workCategory;
+  const badge = workCat ? CATEGORY_BADGES[workCat] : null;
 
   // Exact timestamp-based smooth remaining seconds with clock calibration
   const [smoothRemaining, setSmoothRemaining] = useState<number>(state.remainingSeconds);
@@ -104,9 +114,17 @@ export default function HostGame({
   return (
     <div className="mx-auto grid max-w-6xl gap-6 px-4 py-8 lg:grid-cols-[1fr_300px]">
       <div className="card flex min-h-[420px] flex-col items-center justify-center gap-6 text-center">
-        <p className="text-sm font-semibold uppercase tracking-widest text-white/50">
-          Manche {state.track?.index ?? 0} / {state.track?.total ?? 0}
-        </p>
+        <div className="flex items-center gap-3">
+          <p className="text-sm font-semibold uppercase tracking-widest text-white/50">
+            Manche {state.track?.index ?? 0} / {state.track?.total ?? 0}
+          </p>
+          {badge && (
+            <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-bold uppercase tracking-wider ${badge.color}`}>
+              <span>{badge.emoji}</span>
+              <span>{badge.label}</span>
+            </span>
+          )}
+        </div>
 
         {state.phase === 'countdown' && (
           <p className="animate-pulse text-5xl font-black">Préparez-vous…</p>
@@ -150,9 +168,10 @@ export default function HostGame({
             </div>
             {isCourse && canSubmitAnswer && (
               <AnswerForm
-                hint="Un seul champ suffit · plus tu buzzes tôt, plus ça rapporte"
+                hint={state.isSingleField ? "Trouve l'œuvre, le titre ou l'artiste !" : "Un seul champ suffit · plus tu buzzes tôt, plus ça rapporte"}
                 title={answerTitle}
                 artist={answerArtist}
+                singleField={state.isSingleField}
                 onTitle={setAnswerTitle}
                 onArtist={setAnswerArtist}
                 onSubmit={() => onSubmitAnswer({ title: answerTitle, artist: answerArtist })}
@@ -178,15 +197,23 @@ export default function HostGame({
                 <div className="flex items-center justify-between gap-4">
                   <div>
                     <div className="text-2xl font-bold text-white">{state.submittedAnswer.title || '—'}</div>
-                    <div className="text-white/70">{state.submittedAnswer.artist || '—'}</div>
+                    {!state.isSingleField && <div className="text-white/70">{state.submittedAnswer.artist || '—'}</div>}
                   </div>
                   <div className="text-right">
-                    <div className={state.answerVerdict.title ? 'text-emerald-300 font-bold' : 'text-rose-400'}>
-                      {state.answerVerdict.title ? 'Titre OK ✓' : 'Titre ✗'}
-                    </div>
-                    <div className={state.answerVerdict.artist ? 'text-emerald-300 font-bold' : 'text-rose-400'}>
-                      {state.answerVerdict.artist ? 'Artiste OK ✓' : 'Artiste ✗'}
-                    </div>
+                    {state.isSingleField ? (
+                      <div className={state.answerVerdict.title || state.answerVerdict.artist ? 'text-emerald-300 font-bold text-lg' : 'text-rose-400 font-bold text-lg'}>
+                        {state.answerVerdict.title || state.answerVerdict.artist ? 'Bonne réponse ✓' : 'Faux ✗'}
+                      </div>
+                    ) : (
+                      <>
+                        <div className={state.answerVerdict.title ? 'text-emerald-300 font-bold' : 'text-rose-400'}>
+                          {state.answerVerdict.title ? 'Titre OK ✓' : 'Titre ✗'}
+                        </div>
+                        <div className={state.answerVerdict.artist ? 'text-emerald-300 font-bold' : 'text-rose-400'}>
+                          {state.answerVerdict.artist ? 'Artiste OK ✓' : 'Artiste ✗'}
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -197,6 +224,8 @@ export default function HostGame({
                   artist={answerArtist}
                   titleLocked={titleLocked}
                   artistLocked={artistLocked}
+                  singleField={state.isSingleField}
+                  hint={state.isSingleField ? "Trouve l'œuvre (film, disney, pub, jeu...), le titre ou l'artiste !" : undefined}
                   onTitle={setAnswerTitle}
                   onArtist={setAnswerArtist}
                   onSubmit={() => onSubmitAnswer({ title: answerTitle, artist: answerArtist })}
@@ -209,9 +238,19 @@ export default function HostGame({
         {state.phase === 'reveal' && answer && (
           <>
             {answer.cover && <img src={answer.cover} alt="" className="h-40 w-40 rounded-2xl shadow-glow" />}
+            
+            {answer.work && (
+              <div className="rounded-xl border border-neon/30 bg-neon/15 px-6 py-2.5 text-center shadow-glow">
+                <span className="text-xs uppercase tracking-wider text-neon font-bold">
+                  {badge ? badge.label : 'Œuvre / Franchise'}
+                </span>
+                <p className="text-3xl font-black text-white">{answer.work}</p>
+              </div>
+            )}
+
             <div>
-              <p className="text-3xl font-black">{answer.title}</p>
-              <p className="text-xl text-white/60">{answer.artist}</p>
+              <p className={answer.work ? "text-2xl font-bold text-white/90" : "text-3xl font-black"}>{answer.title}</p>
+              <p className="text-lg text-white/60">{answer.artist}</p>
             </div>
 
             {/* Mode Course : toutes les réponses */}
