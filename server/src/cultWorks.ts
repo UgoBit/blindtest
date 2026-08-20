@@ -1509,8 +1509,8 @@ const GENERIC_ALBUM_WORDS = /\b(?:greatest hits|best of|the best|anthology|compi
 /**
  * Tente d'extraire automatiquement le nom de l'œuvre depuis le titre ou l'album Deezer
  * Exemples :
- * - "Libérée, délivrée (De "La Reine des Neiges")" -> "La Reine des Neiges"
- * - "Hedwig's Theme (From "Harry Potter")" -> "Harry Potter"
+ * - "Libérée, délivrée (De \"La Reine des Neiges\")" -> "La Reine des Neiges"
+ * - "Hedwig's Theme (From \"Harry Potter\")" -> "Harry Potter"
  * - "Titanic (Music from the Motion Picture)" -> "Titanic"
  * - "The Lion King (Original Motion Picture Soundtrack)" -> "The Lion King"
  */
@@ -1533,14 +1533,14 @@ export function extractWorkFromMetadata(title: string, albumTitle?: string): str
 
     if (albumTitle) {
       const cleaned = albumTitle
-        .replace(/\s*[:\-(–—]\s*(?:original motion picture|original soundtrack|music from the motion picture|music from|the motion picture|bande originale du film|bande originale|soundtrack album|soundtrack|original score|the album|ost|b\.?o\.?).*$/i, '')
-        .replace(/\s*\((?:original motion picture|original soundtrack|music from the motion picture|music from|the motion picture|bande originale du film|bande originale|soundtrack album|soundtrack|original score|the album|ost|b\.?o\.?)[^)]*\)/i, '')
-        .replace(/\s*\[(?:original motion picture|original soundtrack|music from the motion picture|music from|the motion picture|bande originale du film|bande originale|soundtrack album|soundtrack|original score|the album|ost|b\.?o\.?)[^\]]*\]/i, '')
-        .replace(/\s+(?:original motion picture soundtrack|original soundtrack|bande originale du film|soundtrack album|soundtrack|score|b\.?o\.?|ost)$/i, '')
+        .replace(/\s*[:(–—\-]\s*(?:original motion picture|original soundtrack|music from the motion picture|music from|the motion picture|bande originale du film|bande originale|soundtrack album|soundtrack|original score|the album|ost|b\.?o\.).*$/i, '')
+        .replace(/\s*\((?:original motion picture|original soundtrack|music from the motion picture|music from|the motion picture|bande originale du film|bande originale|soundtrack album|soundtrack|original score|the album|ost|b\.?o\.)[^)]*\)/i, '')
+        .replace(/\s*\[(?:original motion picture|original soundtrack|music from the motion picture|music from|the motion picture|bande originale du film|bande originale|soundtrack album|soundtrack|original score|the album|ost|b\.?o\.)[^\]]*\]/i, '')
+        .replace(/\s+(?:original motion picture soundtrack|original soundtrack|bande originale du film|soundtrack album|soundtrack|score|b\.?o\.|ost)$/i, '')
         .trim();
 
       if (cleaned.length > 1 && !GENERIC_ALBUM_WORDS.test(cleaned)) {
-        const hadOstMarker = /\b(?:soundtrack|motion picture|bande originale|b\.?o\.?|score|ost|awesome mix)\b/i.test(albumTitle);
+        const hadOstMarker = /\b(?:soundtrack|motion picture|bande originale|b\.?o\.|score|ost|awesome mix)\b/i.test(albumTitle);
         if (hadOstMarker) {
           return cleaned;
         }
@@ -1617,7 +1617,7 @@ export function lookupWork(
   if (themeCategory && ['films', 'series', 'disney', 'dessins-animes', 'animes', 'jeux-video'].includes(themeCategory)) {
     if (albumTitle) {
       const cleanAlb = albumTitle
-        .replace(/\s*[:\-(–—]\s*(?:original motion picture|original soundtrack|music from|soundtrack|bande originale|the album|ost).*$/i, '')
+        .replace(/\s*[:(–—\-]\s*(?:original motion picture|original soundtrack|music from|soundtrack|bande originale|the album|ost).*$/i, '')
         .replace(/\s*\([^)]*\)/g, '')
         .replace(/\s*\[[^\]]*\]/g, '')
         .trim();
