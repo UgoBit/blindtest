@@ -348,16 +348,24 @@ export default function PlayerGame({
             )}
             {state.phase === 'reveal' && (
               <>
-                {state.answer?.work && (
-                  <span className="rounded-lg bg-neon/20 px-3 py-1 text-sm font-bold uppercase tracking-wider text-neon">
-                    {state.answer.work}
-                  </span>
-                )}
-                <span className="text-xl font-bold normal-case tracking-normal">{state.answer?.title ?? 'Réponse'}</span>
-                {state.answer?.artist && (
-                  <span className="text-sm font-medium normal-case tracking-normal text-white/75">
-                    {state.answer.artist}
-                  </span>
+                {state.answer?.work ? (
+                  <>
+                    <span className="rounded-lg bg-neon/20 px-3 py-1 text-xs font-bold uppercase tracking-wider text-neon">
+                      {badge ? `${badge.emoji} ${badge.label}` : 'Œuvre'}
+                    </span>
+                    <span className="text-2xl font-black normal-case tracking-normal text-white">
+                      {state.answer.work}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-xl font-bold normal-case tracking-normal">{state.answer?.title ?? 'Réponse'}</span>
+                    {state.answer?.artist && (
+                      <span className="text-sm font-medium normal-case tracking-normal text-white/75">
+                        {state.answer.artist}
+                      </span>
+                    )}
+                  </>
                 )}
                 {revealDelta > 0 && <span className="buzzer-points">+{revealDelta}</span>}
               </>
@@ -446,6 +454,7 @@ export default function PlayerGame({
           <h3 className="font-bold text-neon">🏁 Réponses de la manche</h3>
           {state.roundAttempts.map((attempt, index) => {
             const isMe = attempt.playerId === playerId;
+            const isSingle = state.isSingleField || !!state.answer?.work;
             return (
               <div
                 key={`${attempt.playerId}-${index}`}
@@ -465,24 +474,35 @@ export default function PlayerGame({
                 </div>
 
                 <div className="mt-2 space-y-1 text-xs">
-                  {attempt.title && (
+                  {isSingle ? (
                     <div className="flex items-center justify-between">
-                      <span className="text-white/70">Titre : {attempt.title}</span>
-                      <span className={attempt.verdict.title ? 'font-bold text-emerald-300' : 'text-rose-400'}>
-                        {attempt.verdict.title ? '✓' : '✗'}
+                      <span className="text-white/70">{badge ? badge.label : 'Œuvre'} : {attempt.title || attempt.artist || '—'}</span>
+                      <span className={attempt.verdict.title || attempt.verdict.artist ? 'font-bold text-emerald-300' : 'text-rose-400'}>
+                        {attempt.verdict.title || attempt.verdict.artist ? '✓' : '✗'}
                       </span>
                     </div>
-                  )}
-                  {attempt.artist && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-white/70">Artiste : {attempt.artist}</span>
-                      <span className={attempt.verdict.artist ? 'font-bold text-emerald-300' : 'text-rose-400'}>
-                        {attempt.verdict.artist ? '✓' : '✗'}
-                      </span>
-                    </div>
-                  )}
-                  {!attempt.title && !attempt.artist && (
-                    <span className="italic text-white/40">Aucune réponse renseignée</span>
+                  ) : (
+                    <>
+                      {attempt.title && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-white/70">Titre : {attempt.title}</span>
+                          <span className={attempt.verdict.title ? 'font-bold text-emerald-300' : 'text-rose-400'}>
+                            {attempt.verdict.title ? '✓' : '✗'}
+                          </span>
+                        </div>
+                      )}
+                      {attempt.artist && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-white/70">Artiste : {attempt.artist}</span>
+                          <span className={attempt.verdict.artist ? 'font-bold text-emerald-300' : 'text-rose-400'}>
+                            {attempt.verdict.artist ? '✓' : '✗'}
+                          </span>
+                        </div>
+                      )}
+                      {!attempt.title && !attempt.artist && (
+                        <span className="italic text-white/40">Aucune réponse renseignée</span>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
@@ -498,6 +518,7 @@ export default function PlayerGame({
           {state.raceAnswers.length > 0 ? (
             state.raceAnswers.map((race) => {
               const isMe = race.playerId === playerId;
+              const isSingle = state.isSingleField || !!state.answer?.work;
               return (
                 <div
                   key={race.playerId}
@@ -518,24 +539,35 @@ export default function PlayerGame({
                   </div>
 
                   <div className="mt-2 space-y-1 text-xs">
-                    {race.title && (
+                    {isSingle ? (
                       <div className="flex items-center justify-between">
-                        <span className="text-white/70">Titre : {race.title}</span>
-                        <span className={race.verdict.title ? 'font-bold text-emerald-300' : 'text-rose-400'}>
-                          {race.verdict.title ? '✓' : '✗'}
+                        <span className="text-white/70">{badge ? badge.label : 'Œuvre'} : {race.title || race.artist || '—'}</span>
+                        <span className={race.verdict.title || race.verdict.artist ? 'font-bold text-emerald-300' : 'text-rose-400'}>
+                          {race.verdict.title || race.verdict.artist ? '✓' : '✗'}
                         </span>
                       </div>
-                    )}
-                    {race.artist && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-white/70">Artiste : {race.artist}</span>
-                        <span className={race.verdict.artist ? 'font-bold text-emerald-300' : 'text-rose-400'}>
-                          {race.verdict.artist ? '✓' : '✗'}
-                        </span>
-                      </div>
-                    )}
-                    {!race.title && !race.artist && (
-                      <span className="italic text-white/40">Aucune réponse renseignée</span>
+                    ) : (
+                      <>
+                        {race.title && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-white/70">Titre : {race.title}</span>
+                            <span className={race.verdict.title ? 'font-bold text-emerald-300' : 'text-rose-400'}>
+                              {race.verdict.title ? '✓' : '✗'}
+                            </span>
+                          </div>
+                        )}
+                        {race.artist && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-white/70">Artiste : {race.artist}</span>
+                            <span className={race.verdict.artist ? 'font-bold text-emerald-300' : 'text-rose-400'}>
+                              {race.verdict.artist ? '✓' : '✗'}
+                            </span>
+                          </div>
+                        )}
+                        {!race.title && !race.artist && (
+                          <span className="italic text-white/40">Aucune réponse renseignée</span>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>

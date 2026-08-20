@@ -241,61 +241,84 @@ export default function HostGame({
           <>
             {answer.cover && <img src={answer.cover} alt="" className="h-40 w-40 rounded-2xl shadow-glow" />}
             
-            {answer.work && (
-              <div className="rounded-xl border border-neon/30 bg-neon/15 px-6 py-2.5 text-center shadow-glow">
+            {answer.work ? (
+              <div className="rounded-2xl border border-neon/40 bg-neon/15 px-8 py-4 text-center shadow-glow">
                 <span className="text-xs uppercase tracking-wider text-neon font-bold">
-                  {badge ? badge.label : 'Œuvre / Franchise'}
+                  {badge ? `${badge.emoji} ${badge.label}` : 'Œuvre / Franchise'}
                 </span>
-                <p className="text-3xl font-black text-white">{answer.work}</p>
+                <p className="text-4xl font-black text-white mt-1">{answer.work}</p>
+              </div>
+            ) : (
+              <div>
+                <p className="text-3xl font-black">{answer.title}</p>
+                <p className="text-lg text-white/60">{answer.artist}</p>
               </div>
             )}
-
-            <div>
-              <p className={answer.work ? "text-2xl font-bold text-white/90" : "text-3xl font-black"}>{answer.title}</p>
-              <p className="text-lg text-white/60">{answer.artist}</p>
-            </div>
 
             {/* Mode Course : toutes les réponses */}
             {isCourse && state.raceAnswers.length > 0 && (
               <div className="w-full max-w-md space-y-3 rounded-xl bg-white/5 p-4 text-left text-sm">
                 <p className="font-semibold text-white/70">Réponses de la manche</p>
-                {state.raceAnswers.map((race) => (
-                  <div key={race.playerId} className="rounded-lg bg-black/20 p-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="truncate font-semibold">{race.name}</span>
-                      <span className="shrink-0 text-white/60">
-                        buzz à {race.seconds}s ·{' '}
-                        <span className={race.points > 0 ? 'font-bold text-accent' : 'text-white/50'}>
-                          {race.points > 0 ? `+${race.points}` : '0'} pt{race.points > 1 ? 's' : ''}
-                        </span>
-                      </span>
-                    </div>
-                    {(['title', 'artist'] as const).map((field) => {
-                      const value = race[field];
-                      if (!value) return null;
-                      return (
-                        <div key={field} className="mt-2 flex items-center justify-between gap-3">
-                          <span className="min-w-0 truncate">
-                            <span className="text-white/50">{field === 'title' ? 'Titre' : 'Artiste'} : </span>
-                            {value}
+                {state.raceAnswers.map((race) => {
+                  const isSingle = state.isSingleField || !!answer.work;
+                  return (
+                    <div key={race.playerId} className="rounded-lg bg-black/20 p-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="truncate font-semibold">{race.name}</span>
+                        <span className="shrink-0 text-white/60">
+                          buzz à {race.seconds}s ·{' '}
+                          <span className={race.points > 0 ? 'font-bold text-accent' : 'text-white/50'}>
+                            {race.points > 0 ? `+${race.points}` : '0'} pt{race.points > 1 ? 's' : ''}
                           </span>
-                          {race.verdict[field] ? (
+                        </span>
+                      </div>
+                      {isSingle ? (
+                        <div className="mt-2 flex items-center justify-between gap-3">
+                          <span className="min-w-0 truncate">
+                            <span className="text-white/50">{badge ? badge.label : 'Œuvre'} : </span>
+                            {race.title || race.artist || <span className="italic text-white/40">vide</span>}
+                          </span>
+                          {race.verdict.title || race.verdict.artist ? (
                             <span className="shrink-0 text-emerald-300 font-semibold">Validé ✓</span>
                           ) : (
                             <button
                               type="button"
                               className="btn-ghost shrink-0 px-2 py-1 text-xs text-neon hover:bg-neon/10"
-                              onClick={() => onCorrectAnswer(field, race.playerId)}
+                              onClick={() => onCorrectAnswer('title', race.playerId)}
                             >
                               En fait c’était bon
                             </button>
                           )}
                         </div>
-                      );
-                    })}
-                    {!race.title && !race.artist && <p className="mt-2 text-white/45">Réponse vide</p>}
-                  </div>
-                ))}
+                      ) : (
+                        (['title', 'artist'] as const).map((field) => {
+                          const value = race[field];
+                          if (!value) return null;
+                          return (
+                            <div key={field} className="mt-2 flex items-center justify-between gap-3">
+                              <span className="min-w-0 truncate">
+                                <span className="text-white/50">{field === 'title' ? 'Titre' : 'Artiste'} : </span>
+                                {value}
+                              </span>
+                              {race.verdict[field] ? (
+                                <span className="shrink-0 text-emerald-300 font-semibold">Validé ✓</span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  className="btn-ghost shrink-0 px-2 py-1 text-xs text-neon hover:bg-neon/10"
+                                  onClick={() => onCorrectAnswer(field, race.playerId)}
+                                >
+                                  En fait c’était bon
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })
+                      )}
+                      {!race.title && !race.artist && !isSingle && <p className="mt-2 text-white/45">Réponse vide</p>}
+                    </div>
+                  );
+                })}
               </div>
             )}
 
@@ -303,44 +326,67 @@ export default function HostGame({
             {!isCourse && state.roundAttempts && state.roundAttempts.length > 0 && (
               <div className="w-full max-w-md space-y-3 rounded-xl bg-white/5 p-4 text-left text-sm">
                 <p className="font-semibold text-white/70">Réponses tentées dans la manche</p>
-                {state.roundAttempts.map((attempt, index) => (
-                  <div key={`${attempt.playerId}-${index}`} className="rounded-lg bg-black/20 p-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="truncate font-semibold">{attempt.name}</span>
-                      <span className="shrink-0 text-white/60">
-                        <span className={attempt.points > 0 ? 'font-bold text-accent' : 'text-white/50'}>
-                          {attempt.points > 0 ? `+${attempt.points}` : '0'} pt{attempt.points > 1 ? 's' : ''}
-                        </span>
-                      </span>
-                    </div>
-                    {(['title', 'artist'] as const).map((field) => {
-                      const label = field === 'title' ? 'Titre' : 'Artiste';
-                      const value = attempt[field];
-                      const accepted = attempt.verdict[field];
-                      if (!value) return null;
-                      return (
-                        <div key={field} className="mt-2 flex items-center justify-between gap-3">
-                          <span className="min-w-0 truncate">
-                            <span className="text-white/50">{label} : </span>
-                            {value}
+                {state.roundAttempts.map((attempt, index) => {
+                  const isSingle = state.isSingleField || !!answer.work;
+                  return (
+                    <div key={`${attempt.playerId}-${index}`} className="rounded-lg bg-black/20 p-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="truncate font-semibold">{attempt.name}</span>
+                        <span className="shrink-0 text-white/60">
+                          <span className={attempt.points > 0 ? 'font-bold text-accent' : 'text-white/50'}>
+                            {attempt.points > 0 ? `+${attempt.points}` : '0'} pt{attempt.points > 1 ? 's' : ''}
                           </span>
-                          {accepted ? (
+                        </span>
+                      </div>
+                      {isSingle ? (
+                        <div className="mt-2 flex items-center justify-between gap-3">
+                          <span className="min-w-0 truncate">
+                            <span className="text-white/50">{badge ? badge.label : 'Œuvre'} : </span>
+                            {attempt.title || attempt.artist || <span className="italic text-white/40">vide</span>}
+                          </span>
+                          {attempt.verdict.title || attempt.verdict.artist ? (
                             <span className="shrink-0 text-emerald-300 font-semibold">Validé ✓</span>
                           ) : (
                             <button
                               type="button"
                               className="btn-ghost shrink-0 px-2 py-1 text-xs text-neon hover:bg-neon/10"
-                              onClick={() => onCorrectAnswer(field, attempt.playerId)}
+                              onClick={() => onCorrectAnswer('title', attempt.playerId)}
                             >
                               En fait c’était bon
                             </button>
                           )}
                         </div>
-                      );
-                    })}
-                    {!attempt.title && !attempt.artist && <p className="mt-2 text-white/45">Réponse vide</p>}
-                  </div>
-                ))}
+                      ) : (
+                        (['title', 'artist'] as const).map((field) => {
+                          const label = field === 'title' ? 'Titre' : 'Artiste';
+                          const value = attempt[field];
+                          const accepted = attempt.verdict[field];
+                          if (!value) return null;
+                          return (
+                            <div key={field} className="mt-2 flex items-center justify-between gap-3">
+                              <span className="min-w-0 truncate">
+                                <span className="text-white/50">{label} : </span>
+                                {value}
+                              </span>
+                              {accepted ? (
+                                <span className="shrink-0 text-emerald-300 font-semibold">Validé ✓</span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  className="btn-ghost shrink-0 px-2 py-1 text-xs text-neon hover:bg-neon/10"
+                                  onClick={() => onCorrectAnswer(field, attempt.playerId)}
+                                >
+                                  En fait c’était bon
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })
+                      )}
+                      {!attempt.title && !attempt.artist && !isSingle && <p className="mt-2 text-white/45">Réponse vide</p>}
+                    </div>
+                  );
+                })}
               </div>
             )}
 
