@@ -169,159 +169,453 @@ export const CULT_WORKS_DICTIONARY: CultWorkEntry[] = [
   // 🎬 FILMS CULTES
   // ==========================================
   {
-    matcher: { title: 'My Heart Will Go On', artist: 'Celine Dion' },
+    matcher: { keywords: ['my heart will go on', 'celine dion titanic', 'near far wherever you are', 'rose dawson', 'jack dawson'] },
     work: 'Titanic',
     aliases: ['Le Titanic'],
     category: 'films',
   },
   {
-    matcher: { title: 'Eye of the Tiger', artist: 'Survivor' },
+    matcher: { keywords: ['eye of the tiger', 'survivor rocky', 'gonna fly now', 'bill conti rocky', 'burning heart', 'robert tepper'] },
     work: 'Rocky',
-    aliases: ['Rocky 3', 'Rocky III', 'Rocky Balboa'],
+    aliases: ['Rocky 3', 'Rocky III', 'Rocky 1', 'Rocky Balboa', 'Creed'],
     category: 'films',
   },
   {
-    matcher: { title: 'Gonna Fly Now', artist: 'Bill Conti' },
-    work: 'Rocky',
-    aliases: ['Rocky 1', 'Rocky Balboa'],
-    category: 'films',
-  },
-  {
-    matcher: { title: 'Stayin Alive', artist: 'Bee Gees' },
+    matcher: { keywords: ['stayin alive', 'night fever', 'how deep is your love', 'more than a woman', 'bee gees saturday night fever'] },
     work: 'La Fièvre du samedi soir',
     aliases: ['Saturday Night Fever', 'La Fievre du samedi soir'],
     category: 'films',
   },
   {
-    matcher: { title: 'Danger Zone', artist: 'Kenny Loggins' },
+    matcher: { keywords: ['danger zone', 'take my breath away', 'kenny loggins danger zone', 'berlin take my breath away', 'great balls of fire top gun'] },
     work: 'Top Gun',
-    aliases: ['Top Gun Maverick'],
+    aliases: ['Top Gun Maverick', 'Top Gun 1'],
     category: 'films',
   },
   {
-    matcher: { title: 'Take My Breath Away', artist: 'Berlin' },
-    work: 'Top Gun',
-    aliases: ['Top Gun 1'],
-    category: 'films',
-  },
-  {
-    matcher: { title: 'Ghostbusters', artist: 'Ray Parker Jr.' },
+    matcher: { keywords: ['ghostbusters', 'ray parker jr', 'who you gonna call', 'sos fantomes'] },
     work: 'SOS Fantômes',
     aliases: ['Ghostbusters', 'SOS Fantomes'],
     category: 'films',
   },
   {
-    matcher: { title: 'The Power of Love', artist: 'Huey Lewis and the News' },
+    matcher: { keywords: ['the power of love huey lewis', 'back in time huey lewis', 'johnny b goode chuck berry', 'back to the future', 'retour vers le futur', 'alan silvestri back to the future'] },
     work: 'Retour vers le futur',
-    aliases: ['Back to the Future', 'Retour vers le futur 1'],
+    aliases: ['Back to the Future', 'Retour vers le futur 1', 'Retour vers le futur 2'],
     category: 'films',
   },
   {
-    matcher: { title: 'What a Feeling', artist: 'Irene Cara' },
+    matcher: { keywords: ['what a feeling', 'irene cara flashdance', 'maniac michael sembello'] },
     work: 'Flashdance',
     aliases: ['Flash dance'],
     category: 'films',
   },
   {
-    matcher: { title: 'Time of My Life', artist: 'Bill Medley' },
+    matcher: { keywords: ['time of my life', 'bill medley jennifer warnes', 'she s like the wind patrick swayze', 'hungry eyes eric carmen', 'dirty dancing'] },
     work: 'Dirty Dancing',
     aliases: ['Dirty dance'],
     category: 'films',
   },
   {
-    matcher: { title: 'Lose Yourself', artist: 'Eminem' },
+    matcher: { keywords: ['lose yourself', 'eminem 8 mile', 'eight mile', 'rabbit run eminem'] },
     work: '8 Mile',
     aliases: ['Eight Mile', '8 miles'],
     category: 'films',
   },
   {
-    matcher: { title: 'I Will Always Love You', artist: 'Whitney Houston' },
+    matcher: { keywords: ['i will always love you', 'whitney houston bodyguard', 'i have nothing whitney houston', 'queen of the night whitney', 'run to you whitney'] },
     work: 'Bodyguard',
     aliases: ['The Bodyguard', 'Le Garde du corps'],
     category: 'films',
   },
   {
-    matcher: { title: 'All Star', artist: 'Smash Mouth' },
+    matcher: { keywords: ['all star smash mouth', 'i m a believer smash mouth', 'hallelujah rufus wainwright shrek', 'holding out for a hero frou frou shrek', 'accidentally in love counting crows'] },
     work: 'Shrek',
-    aliases: ['Shrek 1'],
+    aliases: ['Shrek 1', 'Shrek 2'],
     category: 'films',
   },
   {
-    matcher: { title: 'I m a Believer', artist: 'Smash Mouth' },
-    work: 'Shrek',
-    aliases: ['Shrek 1'],
-    category: 'films',
-  },
-  {
-    matcher: { title: 'Gangsta s Paradise', artist: 'Coolio' },
+    matcher: { keywords: ['gangsta s paradise', 'coolio gangsta', 'dangerous minds', 'esprits rebelles'] },
     work: 'Esprits rebelles',
     aliases: ['Dangerous Minds', 'Esprits rebelle'],
     category: 'films',
   },
   {
-    matcher: { title: 'Men in Black', artist: 'Will Smith' },
+    matcher: { keywords: ['men in black will smith', 'here come the men in black', 'black suits comin will smith'] },
     work: 'Men in Black',
     aliases: ['MIB', 'Hommes en noir'],
     category: 'films',
   },
   {
-    matcher: { title: 'Skyfall', artist: 'Adele' },
+    matcher: { keywords: ['skyfall adele', 'no time to die billie eilish', 'goldeneye tina turner', 'live and let die paul mccartney', 'writings on the wall sam smith', 'you know my name chris cornell', 'james bond theme', 'monty norman', 'john barry 007'] },
     work: 'James Bond',
-    aliases: ['Skyfall', '007', 'James Bond Skyfall'],
+    aliases: ['007', 'Skyfall', 'Goldeneye', 'Mourir peut attendre', 'Spectre', 'Casino Royale', 'No Time To Die'],
     category: 'films',
   },
   {
-    matcher: { title: 'No Time To Die', artist: 'Billie Eilish' },
-    work: 'James Bond',
-    aliases: ['007', 'Mourir peut attendre', 'No Time To Die'],
-    category: 'films',
-  },
-  {
-    matcher: { title: 'GoldenEye', artist: 'Tina Turner' },
-    work: 'James Bond',
-    aliases: ['007', 'Goldeneye'],
-    category: 'films',
-  },
-  {
-    matcher: { title: 'See You Again', artist: 'Wiz Khalifa' },
+    matcher: { keywords: ['see you again wiz khalifa', 'charlie puth see you again', 'fast and furious', 'danza kuduro don omar', 'tokyo drift teriyaki boyz', 'bandoleros don omar'] },
     work: 'Fast and Furious',
-    aliases: ['Fast & Furious', 'Fast and Furious 7', 'Fast 7'],
+    aliases: ['Fast & Furious', 'Fast and Furious 7', 'Tokyo Drift', 'Fast 7'],
     category: 'films',
   },
   {
-    matcher: { title: 'Mrs. Robinson', artist: 'Simon & Garfunkel' },
-    work: 'Le Lauréat',
-    aliases: ['The Graduate', 'Le Laureat'],
-    category: 'films',
-  },
-  {
-    matcher: { title: 'You re the One That I Want', artist: 'John Travolta' },
+    matcher: { keywords: ['you re the one that i want', 'grease lightning', 'hopelessly devoted to you', 'summer nights grease', 'sandy john travolta grease'] },
     work: 'Grease',
     aliases: ['Grease 1'],
     category: 'films',
   },
   {
-    matcher: { title: 'Misirlou', artist: 'Dick Dale' },
+    matcher: { keywords: ['misirlou dick dale', 'you never can tell chuck berry', 'girl you ll be a woman soon urge overkill', 'son of a preacher man dusty springfield', 'jungle boogie kool the gang', 'pulp fiction'] },
     work: 'Pulp Fiction',
-    aliases: ['Taxi', 'Pulp Fiction / Taxi'],
+    aliases: ['Pulp fiction film'],
     category: 'films',
   },
   {
-    matcher: { title: 'Hedwig s Theme', artist: 'John Williams' },
+    matcher: { keywords: ['jailhouse rock', 'elvis presley jailhouse rock', 'le rock du bagne'] },
+    work: 'Jailhouse Rock',
+    aliases: ['Le Rock du bagne', 'Le Rock du Bagne'],
+    category: 'films',
+  },
+  {
+    matcher: { keywords: ['push it to the limit', 'paul engemann scarface', 'scarface push it to the limit', 'giorgio moroder scarface', 'tony s theme scarface'] },
+    work: 'Scarface',
+    aliases: ['Scarface film', 'Tony Montana'],
+    category: 'films',
+  },
+  {
+    matcher: { keywords: ['nightcall kavinsky', 'a real hero college', 'under your spell desire', 'drive kavinsky', 'cliff martinez drive'] },
+    work: 'Drive',
+    aliases: ['Drive film'],
+    category: 'films',
+  },
+  {
+    matcher: { keywords: ['footloose kenny loggins', 'holding out for a hero bonnie tyler', 'lets hear it for the boy deniece williams'] },
+    work: 'Footloose',
+    aliases: ['Footloose film'],
+    category: 'films',
+  },
+  {
+    matcher: { keywords: ['everybody needs somebody to love blues brothers', 'sweet home chicago blues brothers', 'soul man blues brothers', 'the blues brothers theme'] },
+    work: 'The Blues Brothers',
+    aliases: ['Les Blues Brothers', 'Blues Brothers'],
+    category: 'films',
+  },
+  {
+    matcher: { keywords: ['unchained melody righteous brothers', 'ghost movie theme', 'patrick swayze demi moore ghost'] },
+    work: 'Ghost',
+    aliases: ['Ghost film'],
+    category: 'films',
+  },
+  {
+    matcher: { keywords: ['don t you forget about me', 'simple minds breakfast club'] },
+    work: 'The Breakfast Club',
+    aliases: ['Breakfast Club'],
+    category: 'films',
+  },
+  {
+    matcher: { keywords: ['oh pretty woman roy orbison', 'it must have been love roxette', 'pretty woman soundtrack'] },
+    work: 'Pretty Woman',
+    aliases: ['Pretty Woman film'],
+    category: 'films',
+  },
+  {
+    matcher: { keywords: ['i believe i can fly', 'r kelly space jam', 'space jam quad city', 'fly like an eagle seal'] },
+    work: 'Space Jam',
+    aliases: ['Space Jam 1', 'Space Jam nouvelle ere'],
+    category: 'films',
+  },
+  {
+    matcher: { keywords: ['shallow lady gaga', 'always remember us this way', 'a star is born', 'i ll never love again lady gaga'] },
+    work: 'A Star Is Born',
+    aliases: ['Star is Born', 'A Star is Born'],
+    category: 'films',
+  },
+  {
+    matcher: { keywords: ['city of stars ryan gosling', 'another day of sun la la land', 'audition emma stone la la land', 'la la land'] },
+    work: 'La La Land',
+    aliases: ['Laland'],
+    category: 'films',
+  },
+  {
+    matcher: { keywords: ['this is me greatest showman', 'the greatest show hugh jackman', 'rewrite the stars greatest showman', 'a million dreams greatest showman'] },
+    work: 'The Greatest Showman',
+    aliases: ['Greatest Showman'],
+    category: 'films',
+  },
+  {
+    matcher: { keywords: ['hedwig s theme', 'harry potter theme', 'john williams harry potter', 'leaving hogwarts', 'potter waltz'] },
     work: 'Harry Potter',
-    aliases: ['Harry Potter à l école des sorciers'],
+    aliases: ['Harry Potter à l école des sorciers', 'Harry Potter et la Chambre des Secrets', 'Harry Potter film'],
     category: 'films',
   },
   {
-    matcher: { title: 'The Imperial March', artist: 'John Williams' },
+    matcher: { keywords: ['the imperial march', 'star wars main title', 'duel of the fates', 'across the stars', 'cantina band star wars', 'john williams star wars'] },
     work: 'Star Wars',
-    aliases: ['La Guerre des étoiles', 'L Empire contre attaque', 'Darth Vader'],
+    aliases: ['La Guerre des étoiles', 'L Empire contre attaque', 'Darth Vader', 'Star Wars film'],
     category: 'films',
   },
   {
-    matcher: { title: 'He s a Pirate', artist: 'Klaus Badelt' },
+    matcher: { keywords: ['he s a pirate', 'klaus badelt pirates of the caribbean', 'jack sparrow theme', 'hans zimmer pirates'] },
     work: 'Pirates des Caraïbes',
     aliases: ['Pirates of the Caribbean', 'Pirates des Caraibes', 'Jack Sparrow'],
+    category: 'films',
+  },
+  {
+    matcher: { keywords: ['concerning hobbits', 'the lord of the rings theme', 'howard shore lord of the rings', 'the shire howard shore', 'seigneur des anneaux'] },
+    work: 'Le Seigneur des Anneaux',
+    aliases: ['The Lord of the Rings', 'LOTR', 'Le Hobbit', 'Le Seigneur des anneaux'],
+    category: 'films',
+  },
+  {
+    matcher: { keywords: ['now we are free gladiator', 'hans zimmer gladiator', 'lisa gerrard gladiator', 'the battle gladiator'] },
+    work: 'Gladiator',
+    aliases: ['Gladiateur'],
+    category: 'films',
+  },
+  {
+    matcher: { keywords: ['cornfield chase interstellar', 'first step hans zimmer interstellar', 'stay interstellar', 'hans zimmer interstellar'] },
+    work: 'Interstellar',
+    aliases: ['Interstellar film'],
+    category: 'films',
+  },
+  {
+    matcher: { keywords: ['time hans zimmer inception', 'dream is collapsing inception', 'hans zimmer inception'] },
+    work: 'Inception',
+    aliases: ['Inception film'],
+    category: 'films',
+  },
+  {
+    matcher: { keywords: ['why so serious hans zimmer', 'the dark knight theme', 'hans zimmer batman dark knight'] },
+    work: 'The Dark Knight',
+    aliases: ['Batman', 'The Dark Knight Le Chevalier Noir', 'Batman The Dark Knight'],
+    category: 'films',
+  },
+  {
+    matcher: { keywords: ['the good the bad and the ugly', 'le bon la brute et le truand', 'ennio morricone bon brute truand', 'ecstasy of gold ennio morricone'] },
+    work: 'Le Bon, la Brute et le Truand',
+    aliases: ['The Good the Bad and the Ugly', 'Le Bon la Brute et le Truand'],
+    category: 'films',
+  },
+  {
+    matcher: { keywords: ['once upon a time in the west', 'il etait une fois dans l ouest', 'ennio morricone ouest', 'man with a harmonica'] },
+    work: "Il était une fois dans l'Ouest",
+    aliases: ['Once Upon a Time in the West', 'Il etait une fois dans l ouest'],
+    category: 'films',
+  },
+  {
+    matcher: { keywords: ['chi mai ennio morricone', 'le professionnel morricone', 'chi mai professionnel'] },
+    work: 'Le Professionnel',
+    aliases: ['Le Professionnel film', 'Chi Mai'],
+    category: 'films',
+  },
+  {
+    matcher: { keywords: ['la valse d amelie', 'comptine d un autre ete', 'yann tiersen amelie poulain', 'le fabuleux destin d amelie poulain'] },
+    work: "Le Fabuleux Destin d'Amélie Poulain",
+    aliases: ['Amelie Poulain', 'Le Fabuleux Destin d Amelie Poulain', 'Amélie'],
+    category: 'films',
+  },
+  {
+    matcher: { keywords: ['una mattina ludovico einaudi', 'fly ludovico einaudi', 'intouchables soundtrack', 'september earth wind fire intouchables'] },
+    work: 'Intouchables',
+    aliases: ['Intouchables film'],
+    category: 'films',
+  },
+  {
+    matcher: { keywords: ['eric serra le grand bleu', 'the big blue overture', 'my lady blue eric serra'] },
+    work: 'Le Grand Bleu',
+    aliases: ['The Big Blue', 'Le Grand bleu'],
+    category: 'films',
+  },
+  {
+    matcher: { keywords: ['shape of my heart sting', 'leon soundtrack', 'eric serra leon'] },
+    work: 'Léon',
+    aliases: ['Leon', 'Leon the Professional'],
+    category: 'films',
+  },
+  {
+    matcher: { keywords: ['the diva dance eric serra', 'le cinquieme element', 'inva mula diva dance', 'fifth element theme'] },
+    work: 'Le Cinquième Élément',
+    aliases: ['The Fifth Element', 'Le Cinquieme Element'],
+    category: 'films',
+  },
+  {
+    matcher: { keywords: ['quand te reverrai je pays merveilleux', 'just because of you pierre bachelet', 'les bronzes font du ski'] },
+    work: 'Les Bronzés font du ski',
+    aliases: ['Les Bronzes font du ski', 'Les Bronzes'],
+    category: 'films',
+  },
+  {
+    matcher: { keywords: ['reality richard sanderson', 'dreams are my reality', 'la boum soundtrack', 'vladimir cosma la boum'] },
+    work: 'La Boum',
+    aliases: ['La Boum 1', 'La Boum 2'],
+    category: 'films',
+  },
+  {
+    matcher: { keywords: ['paris latino camping', 'bandolero paris latino camping', 'franck dubosc camping'] },
+    work: 'Camping',
+    aliases: ['Camping 1', 'Camping 2', 'Camping film'],
+    category: 'films',
+  },
+  {
+    matcher: { keywords: ['les aventures de rabbi jacob', 'vladimir cosma rabbi jacob', 'danse hassidique rabbi jacob'] },
+    work: 'Rabbi Jacob',
+    aliases: ['Les Aventures de Rabbi Jacob', 'Les Aventures de Rabbi Jacob film'],
+    category: 'films',
+  },
+  {
+    matcher: { keywords: ['la soupe aux choux', 'raymond lefevre la soupe aux choux', 'theme soupe aux choux'] },
+    work: 'La Soupe aux choux',
+    aliases: ['La Soupe aux Choux', 'La Soupe aux choux film'],
+    category: 'films',
+  },
+  {
+    matcher: { keywords: ['marche des gendarmes', 'douliou douliou saint tropez', 'le gendarme de saint tropez'] },
+    work: 'Le Gendarme de Saint-Tropez',
+    aliases: ['Le Gendarme de Saint Tropez', 'Les Gendarmes'],
+    category: 'films',
+  },
+  {
+    matcher: { keywords: ['i got you i feel good asterix', 'mission cleopatre', 'asterix et obelix mission cleopatre', 'ti amo umberto tozzi asterix'] },
+    work: 'Astérix & Obélix : Mission Cléopâtre',
+    aliases: ['Asterix et Obelix Mission Cleopatre', 'Mission Cleopatre', 'Asterix Mission Cleopatre'],
+    category: 'films',
+  },
+  {
+    matcher: { keywords: ['le diner de cons vladimir cosma', 'theme le diner de cons'] },
+    work: 'Le Dîner de Cons',
+    aliases: ['Le Diner de Cons', 'Le Diner de cons film'],
+    category: 'films',
+  },
+  {
+    matcher: { keywords: ['bad boys inner circle', 'bad boys bad boys whatcha gonna do'] },
+    work: 'Bad Boys',
+    aliases: ['Bad Boys film', 'Bad Boys 2', 'Bad Boys for Life'],
+    category: 'films',
+  },
+  {
+    matcher: { keywords: ['wild wild west will smith', 'kool moe dee wild wild west'] },
+    work: 'Wild Wild West',
+    aliases: ['Wild wild west film'],
+    category: 'films',
+  },
+  {
+    matcher: { keywords: ['purple rain prince', 'lets go crazy prince purple rain'] },
+    work: 'Purple Rain',
+    aliases: ['Purple rain film'],
+    category: 'films',
+  },
+  {
+    matcher: { keywords: ['streets of philadelphia bruce springsteen', 'philadelphia soundtrack'] },
+    work: 'Philadelphia',
+    aliases: ['Philadelphia film'],
+    category: 'films',
+  },
+  {
+    matcher: { keywords: ['cant stop the feeling justin timberlake', 'trolls soundtrack'] },
+    work: 'Les Trolls',
+    aliases: ['Trolls', 'Trolls film'],
+    category: 'films',
+  },
+  {
+    matcher: { keywords: ['happy pharrell williams', 'despicable me 2', 'moi moche et mechant 2'] },
+    work: 'Moi, moche et méchant',
+    aliases: ['Moi moche et mechant', 'Despicable Me', 'Les Minions', 'Minions'],
+    category: 'films',
+  },
+  {
+    matcher: { keywords: ['hero chad kroeger', 'spider man 2002 soundtrack', 'spider-man chad kroeger'] },
+    work: 'Spider-Man',
+    aliases: ['Spiderman', 'Spider-Man 1', 'Spider Man'],
+    category: 'films',
+  },
+  {
+    matcher: { keywords: ['hooked on a feeling blue swede', 'come and get your love redbone', 'guardians of the galaxy', 'gardiens de la galaxie', 'awesome mix'] },
+    work: 'Les Gardiens de la Galaxie',
+    aliases: ['Guardians of the Galaxy', 'Les Gardiens de la galaxie'],
+    category: 'films',
+  },
+  {
+    matcher: { keywords: ['sunflower post malone swae lee', 'spider-man into the spider-verse', 'spider-man new generation'] },
+    work: 'Spider-Man: New Generation',
+    aliases: ['Spider-Man into the Spider-Verse', 'Into the Spider-Verse', 'Spider-Man New Generation'],
+    category: 'films',
+  },
+  {
+    matcher: { keywords: ['love is all around wet wet wet', 'four weddings and a funeral', 'quatre mariages et un enterrement'] },
+    work: 'Quatre mariages et un enterrement',
+    aliases: ['Four Weddings and a Funeral', 'Quatre Mariages et un Enterrement'],
+    category: 'films',
+  },
+  {
+    matcher: { keywords: ['she elvis costello', 'notting hill soundtrack', 'aint no sunshine bill withers notting hill', 'coup de foudre a notting hill'] },
+    work: 'Coup de foudre à Notting Hill',
+    aliases: ['Notting Hill', 'Coup de Foudre a Notting Hill'],
+    category: 'films',
+  },
+  {
+    matcher: { keywords: ['kiss me sixpence none the richer', 'she s all that', 'elle est trop bien'] },
+    work: 'Elle est trop bien',
+    aliases: ['She s All That', 'Elle est Trop Bien'],
+    category: 'films',
+  },
+  {
+    matcher: { keywords: ['iris goo goo dolls', 'city of angels', 'la cite des anges'] },
+    work: 'La Cité des anges',
+    aliases: ['City of Angels', 'La Cite des Anges'],
+    category: 'films',
+  },
+  {
+    matcher: { keywords: ['bitter sweet symphony the verve', 'cruel intentions', 'sexe intentions'] },
+    work: 'Sexe Intentions',
+    aliases: ['Cruel Intentions', 'Sexe Intentions film'],
+    category: 'films',
+  },
+  {
+    matcher: { keywords: ['where is my mind pixies', 'fight club soundtrack'] },
+    work: 'Fight Club',
+    aliases: ['Fight club film'],
+    category: 'films',
+  },
+  {
+    matcher: { keywords: ['mad world gary jules', 'donnie darko soundtrack'] },
+    work: 'Donnie Darko',
+    aliases: ['Donnie darko film'],
+    category: 'films',
+  },
+  {
+    matcher: { keywords: ['bang bang nancy sinatra', 'battle without honor or humanity', 'kill bill soundtrack', 'twisted nerve bernard herrmann'] },
+    work: 'Kill Bill',
+    aliases: ['Kill Bill Vol 1', 'Kill Bill Vol 2', 'Kill Bill 1'],
+    category: 'films',
+  },
+  {
+    matcher: { keywords: ['the pink panther theme', 'henry mancini pink panther', 'la panthere rose'] },
+    work: 'La Panthère Rose',
+    aliases: ['The Pink Panther', 'La Panthere Rose'],
+    category: 'films',
+  },
+  {
+    matcher: { keywords: ['the godfather theme', 'speak softly love nino rota', 'le parrain nino rota'] },
+    work: 'Le Parrain',
+    aliases: ['The Godfather', 'Le Parrain film'],
+    category: 'films',
+  },
+  {
+    matcher: { keywords: ['raiders march john williams', 'indiana jones theme', 'raiders of the lost ark'] },
+    work: 'Indiana Jones',
+    aliases: ['Les Aventuriers de l arche perdue', 'Indiana Jones film'],
+    category: 'films',
+  },
+  {
+    matcher: { keywords: ['jurassic park theme john williams', 'welcome to jurassic park'] },
+    work: 'Jurassic Park',
+    aliases: ['Jurassic World', 'Parc Jurassique'],
+    category: 'films',
+  },
+  {
+    matcher: { keywords: ['jaws main title john williams', 'les dents de la mer'] },
+    work: 'Les Dents de la Mer',
+    aliases: ['Jaws', 'Les Dents de la mer'],
     category: 'films',
   },
 
@@ -787,6 +1081,8 @@ export function normalizeWorkText(value: string): string {
     .trim();
 }
 
+const GENERIC_ALBUM_WORDS = /\b(?:greatest hits|best of|the best|anthology|compilation|collection|platinum|gold|hits|singles|definitive|remastered|live at|live in|concert|studio album|deluxe|anniversary|tour|volume|vol\b|edition)\b/i;
+
 /**
  * Tente d'extraire automatiquement le nom de l'œuvre depuis le titre ou l'album Deezer
  * Exemples :
@@ -799,17 +1095,37 @@ export function extractWorkFromMetadata(title: string, albumTitle?: string): str
   const sources = [title, albumTitle ?? ''].filter(Boolean);
 
   for (const src of sources) {
-    // Motifs : (De "Film"), (From "Movie"), (Bande originale de "Film")
-    const matchQuote = src.match(/(?:from|de|du film|de la serie|tiré de|tire de|extrait de)\s+["'«]([^"'»]+)["'»]/i);
-    if (matchQuote?.[1]) return matchQuote[1].trim();
+    // 1. Explicit quotes : (De "Film"), (From "Movie"), (Bande originale de "Film")
+    const matchQuote = src.match(/(?:from|de|du film|de la série|de la serie|tiré de|tire de|extrait de)\s+["'«]([^"'»]+)["'»]/i);
+    if (matchQuote?.[1] && matchQuote[1].trim().length > 1) return matchQuote[1].trim();
 
-    const matchParen = src.match(/\((?:from|de|du film|de la série|de la serie|ost|soundtrack)\s+([^)]+)\)/i);
-    if (matchParen?.[1]) return matchParen[1].replace(/^(?:the|le|la|les|l')\s+/i, '').trim();
+    // 2. Parentheses/brackets : (From Movie), (Theme from Movie), (From the Original Soundtrack ...)
+    const matchParen = src.match(/\((?:from the motion picture|from the original soundtrack|from the soundtrack|from|de la série|de la serie|du film|de|music from|ost|soundtrack|b\.?o\.?)\s+([^)]+)\)/i);
+    if (matchParen?.[1] && matchParen[1].trim().length > 1) {
+      return matchParen[1].replace(/^(?:the|le|la|les|l'|un|une)\s+/i, '').trim();
+    }
 
-    // Motifs d'albums : "Film (Original Soundtrack)", "Film (Bande Originale du Film)"
-    const matchAlbumOst = src.match(/^([^([–-]+)\s*(?:\(|\[|-|–)\s*(?:original|bande originale|b\.?o\.?|soundtrack|motion picture|music from|ost)/i);
-    if (matchAlbumOst?.[1] && matchAlbumOst[1].trim().length > 2) {
-      return matchAlbumOst[1].trim();
+    // 3. Theme / Main Title from [Movie]
+    const matchThemeFrom = src.match(/^(?:theme|main title|love theme|prologue|suite|overture|score)\s+(?:from|de|du film|of)\s+["'«]?([^"'»(\[-]+)/i);
+    if (matchThemeFrom?.[1] && matchThemeFrom[1].trim().length > 1) {
+      return matchThemeFrom[1].trim();
+    }
+  }
+
+  // 4. Clean Album Title from soundtrack / OST markers
+  if (albumTitle) {
+    const cleaned = albumTitle
+      .replace(/\s*[:\-(–—]\s*(?:original motion picture|original soundtrack|music from the motion picture|music from|the motion picture|bande originale du film|bande originale|soundtrack album|soundtrack|original score|the album|ost|b\.?o\.?).*$/i, '')
+      .replace(/\s*\((?:original motion picture|original soundtrack|music from the motion picture|music from|the motion picture|bande originale du film|bande originale|soundtrack album|soundtrack|original score|the album|ost|b\.?o\.?)[^)]*\)/i, '')
+      .replace(/\s*\[(?:original motion picture|original soundtrack|music from the motion picture|music from|the motion picture|bande originale du film|bande originale|soundtrack album|soundtrack|original score|the album|ost|b\.?o\.?)[^\]]*\]/i, '')
+      .replace(/\s+(?:original motion picture soundtrack|original soundtrack|bande originale du film|soundtrack album|soundtrack|score|b\.?o\.?|ost)$/i, '')
+      .trim();
+
+    if (cleaned.length > 1 && !GENERIC_ALBUM_WORDS.test(cleaned)) {
+      const hadOstMarker = /\b(?:soundtrack|motion picture|bande originale|b\.?o\.?|score|ost|awesome mix)\b/i.test(albumTitle);
+      if (hadOstMarker) {
+        return cleaned;
+      }
     }
   }
 
@@ -873,6 +1189,37 @@ export function lookupWork(
       aliases: [],
       category: cat,
     };
+  }
+
+  // 3. Fallback pour thèmes cultes spécifiques (films, séries, etc.)
+  if (themeCategory && ['films', 'series', 'disney', 'dessins-animes', 'animes', 'jeux-video'].includes(themeCategory)) {
+    if (albumTitle) {
+      const cleanAlb = albumTitle
+        .replace(/\s*[:\-(–—]\s*(?:original motion picture|original soundtrack|music from|soundtrack|bande originale|the album|ost).*$/i, '')
+        .replace(/\s*\([^)]*\)/g, '')
+        .replace(/\s*\[[^\]]*\]/g, '')
+        .trim();
+      if (
+        cleanAlb.length > 2 &&
+        !GENERIC_ALBUM_WORDS.test(cleanAlb) &&
+        normalizeWorkText(cleanAlb) !== normalizeWorkText(artist)
+      ) {
+        return {
+          work: cleanAlb,
+          aliases: [],
+          category: themeCategory as any,
+        };
+      }
+    }
+
+    const cleanTit = title.replace(/\s*\([^)]*\)/g, '').replace(/\s*\[[^\]]*\]/g, '').trim();
+    if (cleanTit.length > 2) {
+      return {
+        work: cleanTit,
+        aliases: [],
+        category: themeCategory as any,
+      };
+    }
   }
 
   return null;
