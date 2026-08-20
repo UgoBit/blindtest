@@ -60,13 +60,18 @@ export default function Lobby({
   const populatedTeams = teams.filter((team) => team.members.length > 0).length;
   const teamBuzzers = guests.length + (settings.hostPlays ? 1 : 0);
 
+  const [playlistUrl, setPlaylistUrl] = useState('');
+  const [loadingPlaylist, setLoadingPlaylist] = useState(false);
+  const [playlistError, setPlaylistError] = useState<string | null>(null);
+
   const selectedDecadesCount = settings.yearRanges?.length ?? 0;
   const selectedGenresCount = settings.genres?.length ?? 0;
   const selectedThemesCount = settings.themes.length;
+  const hasCustomPlaylist = !!settings.customPlaylistId;
   const totalMusicSelected = selectedDecadesCount + selectedGenresCount + selectedThemesCount;
 
   const canStart =
-    totalMusicSelected > 0 &&
+    (totalMusicSelected > 0 || hasCustomPlaylist) &&
     (mode === 'solo'
       ? true
       : mode === 'teams'
@@ -346,6 +351,99 @@ export default function Lobby({
             </div>
           </section>
         )}
+
+        {/* Playlist Deezer personnalisée */}
+        <section className="card">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-bold flex items-center gap-2">
+                <span>🎵</span> Playlist Deezer personnalisée
+              </h2>
+              <p className="mt-1 text-sm text-white/60">
+                Colle le lien ou l'ID d'une playlist Deezer publique pour jouer avec ta propre sélection !
+              </p>
+            </div>
+            {settings.customPlaylistId && (
+              <button
+                type="button"
+                onClick={() => {
+                  setPlaylistUrl('');
+                  setPlaylistError(null);
+                  onUpdate({ customPlaylistId: null, customPlaylistTitle: null });
+                }}
+                className="btn-ghost px-3 py-1.5 text-xs text-rose-300 hover:text-rose-200"
+              >
+                Retirer la playlist
+              </button>
+            )}
+          </div>
+
+          {settings.customPlaylistId ? (
+            <div className="mt-4 flex items-center justify-between rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4">
+              <div className="flex items-center gap-3">
+                <span className="text-3xl">🎧</span>
+                <div>
+                  <span className="text-xs font-semibold uppercase tracking-wider text-emerald-400">
+                    Playlist active
+                  </span>
+                  <div className="text-lg font-bold text-white">
+                    {settings.customPlaylistTitle ?? `Playlist #${settings.customPlaylistId}`}
+                  </div>
+                </div>
+              </div>
+              <span className="rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-bold text-emerald-300">
+                Sélectionnée ✓
+              </span>
+            </div>
+          ) : (
+            <div className="mt-4 space-y-3">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={playlistUrl}
+                  onChange={(e) => {
+                    setPlaylistUrl(e.target.value);
+                    setPlaylistError(null);
+                  }}
+                  placeholder="https://www.deezer.com/fr/playlist/12345678 ou ID..."
+                  className="flex-1 rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-white/40 outline-none focus:border-neon focus:ring-1 focus:ring-neon"
+                />
+                <button
+                  type="button"
+                  disabled={loadingPlaylist || !playlistUrl.trim()}
+                  onClick={async () => {
+                    if (!playlistUrl.trim()) return;
+                    setLoadingPlaylist(true);
+                    setPlaylistError(null);
+                    try {
+                      const res = await fetch(`/api/deezer-playlist?q=${encodeURIComponent(playlistUrl.trim())}`);
+                      const data = await res.json();
+                      if (!data.ok) {
+                        setPlaylistError(data.error || 'Playlist introuvable');
+                        return;
+                      }
+                      onUpdate({
+                        customPlaylistId: data.id,
+                        customPlaylistTitle: data.title,
+                      });
+                      setPlaylistUrl('');
+                    } catch {
+                      setPlaylistError('Erreur de connexion au serveur');
+                    } finally {
+                      setLoadingPlaylist(false);
+                    }
+                  }}
+                  className="btn-primary px-5 py-2.5 text-sm shadow-md disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {loadingPlaylist ? 'Chargement…' : 'Importer'}
+                </button>
+              </div>
+              {playlistError && (
+                <p className="text-xs text-rose-400 font-medium">{playlistError}</p>
+              )}
+            </div>
+          )}
+        </section>
 
         <section className="card">
           <h2 className="mb-3 text-xl font-bold">Niveau</h2>
@@ -916,7 +1014,17 @@ function SelectionSummary({
           </div>
         )}
 
-        {!hasSelections && (
+        {settings.customPlaylistId && (
+          <div>
+            <span className="mb-1.5 block text-xs font-semibold text-emerald-400">🎵 Playlist Deezer sur-mesure</span>
+            <span className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500/20 px-2.5 py-1 text-xs font-bold text-emerald-200 border border-emerald-500/30">
+              <span>🎧</span>
+              <span>{settings.customPlaylistTitle ?? `Playlist #${settings.customPlaylistId}`}</span>
+            </span>
+          </div>
+        )}
+
+        {!hasSelections && !settings.customPlaylistId && (
           <p className="text-xs italic text-white/40">Aucune sélection spécifique (Top hits généraux).</p>
         )}
       </div>

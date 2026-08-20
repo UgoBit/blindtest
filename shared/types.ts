@@ -111,6 +111,10 @@ export interface RoomSettings {
   yearRanges?: string[];
   /** Preferred genres (e.g. rock, pop, rap) */
   genres?: string[];
+  /** Custom Deezer playlist ID if host imported their own playlist */
+  customPlaylistId?: string | null;
+  /** Title of the custom Deezer playlist */
+  customPlaylistTitle?: string | null;
 }
 
 export interface RoundAttempt {

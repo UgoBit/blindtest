@@ -447,13 +447,53 @@ function gradeByDifficulty(pool: Track[], difficulty: Difficulty): Track[] {
   return ranked.slice(band * 2);
 }
 
+export function extractDeezerPlaylistId(input: string): string | null {
+  const trimmed = input.trim();
+  if (/^\d+$/.test(trimmed)) return trimmed;
+  const match = trimmed.match(/playlist\/(\d+)/i);
+  if (match) return match[1];
+  return null;
+}
+
+export async function fetchDeezerPlaylistInfo(
+  query: string,
+): Promise<{ id: string; title: string; count: number; picture: string | null } | null> {
+  const id = extractDeezerPlaylistId(query);
+  if (!id) return null;
+  const data = await fetchJson<{ id?: number; title?: string; nb_tracks?: number; picture_medium?: string }>(
+    `${DEEZER}/playlist/${id}`,
+  );
+  if (!data || !data.id || !data.title) return null;
+  return {
+    id: String(data.id),
+    title: data.title,
+    count: data.nb_tracks ?? 0,
+    picture: data.picture_medium ?? null,
+  };
+}
+
 /** Builds a playlist of unique tracks drawn evenly from every selected theme, decade, and genre. */
 export async function buildPlaylist(
   themeIds: string[],
   count: number,
   difficulty: Difficulty = 'mixte',
-  opts?: { yearRanges?: string[]; genres?: string[] },
+  opts?: { yearRanges?: string[]; genres?: string[]; customPlaylistId?: string | null },
 ): Promise<Track[]> {
+  // If custom playlist is provided, load its tracks directly!
+  if (opts?.customPlaylistId) {
+    const data = await fetchJson<{ data?: DeezerTrack[] }>(
+      `${DEEZER}/playlist/${opts.customPlaylistId}/tracks?limit=200`,
+    );
+    const tracks: Track[] = [];
+    for (const t of data?.data ?? []) {
+      const track = toTrack(t);
+      if (track && isAcceptableTrack(track)) tracks.push(track);
+    }
+    if (tracks.length > 0) {
+      return shuffle(tracks).slice(0, count);
+    }
+  }
+
   const definitions: ThemeDefinition[] = [];
 
   // 1. Explicit theme IDs

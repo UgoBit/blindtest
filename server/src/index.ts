@@ -15,6 +15,8 @@ import { DIFFICULTIES } from '../../shared/types.js';
 import { publicThemes, THEME_BY_ID } from './themes.js';
 import { Room, rooms } from './room.js';
 
+import { fetchDeezerPlaylistInfo } from './music.js';
+
 const PORT = Number(process.env.PORT ?? 3001);
 const ROOM_TTL_MS = 6 * 60 * 60 * 1000;
 
@@ -26,6 +28,20 @@ const io = new Server<ClientToServerEvents, ServerToClientEvents>(httpServer, {
 
 app.get('/api/themes', (_req, res) => {
   res.json(publicThemes);
+});
+
+app.get('/api/deezer-playlist', async (req, res) => {
+  const q = String(req.query.q ?? '');
+  if (!q) {
+    res.status(400).json({ ok: false, error: 'Paramètre q manquant' });
+    return;
+  }
+  const info = await fetchDeezerPlaylistInfo(q);
+  if (!info) {
+    res.status(404).json({ ok: false, error: 'Playlist Deezer introuvable ou privée.' });
+    return;
+  }
+  res.json({ ok: true, ...info });
 });
 
 app.get('/api/rooms/:code', (req, res) => {
@@ -66,6 +82,9 @@ function sanitizeSettings(input: Partial<RoomSettings>): RoomSettings {
   const hostPlays = mode === 'solo' || input.hostPlays === true;
   const requestedHostAudio = input.audioHostEnabled !== false;
   const audioPlayersEnabled = input.audioPlayersEnabled === true;
+  const customPlaylistId = typeof input.customPlaylistId === 'string' && input.customPlaylistId.trim() ? input.customPlaylistId.trim() : null;
+  const customPlaylistTitle = typeof input.customPlaylistTitle === 'string' && input.customPlaylistTitle.trim() ? input.customPlaylistTitle.trim().slice(0, 60) : null;
+
   return {
     themes: themes.slice(0, 12),
     yearRanges,
@@ -81,6 +100,8 @@ function sanitizeSettings(input: Partial<RoomSettings>): RoomSettings {
     audioPlayersEnabled,
     // Playing without a buzzer only makes sense when a single screen listens.
     buzzerEnabled: mode === 'solo' ? input.buzzerEnabled !== false : true,
+    customPlaylistId,
+    customPlaylistTitle,
   };
 }
 

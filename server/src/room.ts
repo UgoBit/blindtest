@@ -394,16 +394,21 @@ export class Room {
     const hasSelection =
       this.settings.themes.length > 0 ||
       (this.settings.yearRanges && this.settings.yearRanges.length > 0) ||
-      (this.settings.genres && this.settings.genres.length > 0);
+      (this.settings.genres && this.settings.genres.length > 0) ||
+      !!this.settings.customPlaylistId;
     if (!hasSelection) {
-      this.io.to(this.code).emit('error_message', 'Choisissez au moins un thème, une époque ou un style musical.');
+      this.io.to(this.code).emit('error_message', 'Choisissez au moins un thème, une époque, un style musical ou une playlist.');
       return;
     }
     this.playlist = await buildPlaylist(
       this.settings.themes,
       this.settings.rounds,
       this.settings.difficulty,
-      { yearRanges: this.settings.yearRanges ?? [], genres: this.settings.genres ?? [] },
+      {
+        yearRanges: this.settings.yearRanges ?? [],
+        genres: this.settings.genres ?? [],
+        customPlaylistId: this.settings.customPlaylistId,
+      },
     );
     if (this.playlist.length === 0) {
       this.io.to(this.code).emit('error_message', "Impossible de charger des extraits pour cette sélection.");
