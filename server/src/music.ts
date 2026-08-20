@@ -397,23 +397,7 @@ export async function buildPlaylist(
     }
   }
 
-  // 2. Decade ranges
-  if (opts?.yearRanges) {
-    for (const decade of opts.yearRanges) {
-      const queries = DECADE_QUERIES[decade];
-      if (queries && !definitions.some((d) => d.id === decade)) {
-        definitions.push({
-          id: decade,
-          label: `Années ${decade}`,
-          emoji: '📅',
-          category: 'epoque',
-          source: { kind: 'playlists', queries },
-        });
-      }
-    }
-  }
-
-  // 3. Genre selections
+  // 2. Genre selections
   if (opts?.genres) {
     for (const genre of opts.genres) {
       const source = GENRE_SOURCES[genre];
@@ -424,6 +408,23 @@ export async function buildPlaylist(
           emoji: '🎵',
           category: 'genre',
           source,
+        });
+      }
+    }
+  }
+
+  // 3. Decade ranges: only added as standalone pools if NO themes and NO genres were selected
+  // Otherwise, decade ranges act as filters on the selected themes and genres!
+  if (definitions.length === 0 && opts?.yearRanges?.length) {
+    for (const decade of opts.yearRanges) {
+      const queries = DECADE_QUERIES[decade];
+      if (queries && !definitions.some((d) => d.id === decade)) {
+        definitions.push({
+          id: decade,
+          label: `Années ${decade}`,
+          emoji: '📅',
+          category: 'epoque',
+          source: { kind: 'playlists', queries },
         });
       }
     }
