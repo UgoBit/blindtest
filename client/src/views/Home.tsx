@@ -5,9 +5,10 @@ interface Props {
   error: string | null;
   onCreate: () => void;
   onJoin: (code: string, name: string) => void;
+  onClearError?: () => void;
 }
 
-export default function Home({ initialCode, error, onCreate, onJoin }: Props) {
+export default function Home({ initialCode, error, onCreate, onJoin, onClearError }: Props) {
   const [code, setCode] = useState(initialCode);
   const [name, setName] = useState(() => {
     try {
@@ -32,6 +33,15 @@ export default function Home({ initialCode, error, onCreate, onJoin }: Props) {
     }
   }, [showFullMenu, initialCode]);
 
+  // Auto-dismiss error after 5 seconds
+  useEffect(() => {
+    if (!error) return;
+    const timer = setTimeout(() => {
+      onClearError?.();
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [error, onClearError]);
+
   const handleSubmitJoin = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const cleanCode = code.trim().toUpperCase();
@@ -46,6 +56,13 @@ export default function Home({ initialCode, error, onCreate, onJoin }: Props) {
     }
   };
 
+  const handleSwitchToFullMenu = () => {
+    onClearError?.();
+    setShowFullMenu(true);
+    setCode('');
+    window.history.replaceState(null, '', '/');
+  };
+
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-8 px-4 py-10 overflow-x-hidden">
       <header className="text-center">
@@ -57,7 +74,22 @@ export default function Home({ initialCode, error, onCreate, onJoin }: Props) {
         </p>
       </header>
 
-      {error && <p className="rounded-xl bg-red-500/20 px-4 py-3 text-center text-red-200">{error}</p>}
+      {error && (
+        <div className="relative mx-auto flex w-full max-w-lg items-center justify-between gap-3 rounded-xl border border-red-500/30 bg-red-500/20 px-4 py-3 text-red-200 shadow-lg">
+          <div className="flex items-center gap-2">
+            <span>⚠️</span>
+            <span>{error}</span>
+          </div>
+          <button
+            type="button"
+            className="rounded-lg p-1 text-red-300 hover:bg-white/10 hover:text-white"
+            onClick={() => onClearError?.()}
+            title="Fermer"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Vue dédiée quand on arrive avec un lien direct ou QR code */}
       {!showFullMenu && code.length === 4 ? (
@@ -87,7 +119,10 @@ export default function Home({ initialCode, error, onCreate, onJoin }: Props) {
                 placeholder="Ex: Lucas, Marie, Alex..."
                 maxLength={16}
                 value={name}
-                onChange={(event) => setName(event.target.value)}
+                onChange={(event) => {
+                  onClearError?.();
+                  setName(event.target.value);
+                }}
               />
             </div>
 
@@ -101,7 +136,7 @@ export default function Home({ initialCode, error, onCreate, onJoin }: Props) {
 
             <button
               type="button"
-              onClick={() => setShowFullMenu(true)}
+              onClick={handleSwitchToFullMenu}
               className="btn-ghost text-xs text-white/50 hover:text-white"
             >
               Changer de salon ou héberger une partie
@@ -118,7 +153,13 @@ export default function Home({ initialCode, error, onCreate, onJoin }: Props) {
                 Sur la TV, le PC ou la tablette qui diffuse la musique. Un QR code s&apos;affiche pour les joueurs.
               </p>
             </div>
-            <button className="btn-primary" onClick={onCreate}>
+            <button
+              className="btn-primary"
+              onClick={() => {
+                onClearError?.();
+                onCreate();
+              }}
+            >
               Créer une partie
             </button>
           </section>
@@ -133,14 +174,20 @@ export default function Home({ initialCode, error, onCreate, onJoin }: Props) {
               placeholder="CODE"
               maxLength={4}
               value={code}
-              onChange={(event) => setCode(event.target.value.toUpperCase())}
+              onChange={(event) => {
+                onClearError?.();
+                setCode(event.target.value.toUpperCase());
+              }}
             />
             <input
               className="w-full rounded-xl bg-white/10 px-4 py-3 outline-none focus:ring-2 focus:ring-accent"
               placeholder="Votre pseudo"
               maxLength={16}
               value={name}
-              onChange={(event) => setName(event.target.value)}
+              onChange={(event) => {
+                onClearError?.();
+                setName(event.target.value);
+              }}
             />
             <button
               type="submit"

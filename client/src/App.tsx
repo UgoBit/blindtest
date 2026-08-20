@@ -182,6 +182,7 @@ export default function App() {
       socket.emit('join_room', { code: stored.code, name: stored.name, playerId: stored.playerId }, (res) => {
         if (!res.ok) {
           clearSession();
+          window.history.replaceState(null, '', '/');
           return;
         }
         setPlayerId(res.playerId);
@@ -228,6 +229,7 @@ export default function App() {
   }, [isHost, state, track]);
 
   const createRoom = useCallback(() => {
+    setError(null);
     const settings: RoomSettings = {
       themes: [],
       difficulty: 'moyen',
@@ -256,9 +258,11 @@ export default function App() {
   }, []);
 
   const joinRoom = useCallback((code: string, name: string) => {
+    setError(null);
     socket.emit('join_room', { code, name }, (res) => {
       if (!res.ok) {
         setError(res.error);
+        window.history.replaceState(null, '', '/');
         return;
       }
       setPlayerId(res.playerId);
@@ -269,7 +273,15 @@ export default function App() {
   }, []);
 
   if (!state || !playerId) {
-    return <Home initialCode={codeFromUrl()} error={error} onCreate={createRoom} onJoin={joinRoom} />;
+    return (
+      <Home
+        initialCode={codeFromUrl()}
+        error={error}
+        onCreate={createRoom}
+        onJoin={joinRoom}
+        onClearError={() => setError(null)}
+      />
+    );
   }
 
   const hostPlaying =
