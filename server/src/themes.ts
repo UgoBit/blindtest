@@ -23,14 +23,38 @@ export const DECADE_QUERIES: Record<string, string[]> = {
 };
 
 export const GENRE_SOURCES: Record<string, ThemeSource> = {
-  pop: { kind: 'chart', genreId: 132 },
-  rock: { kind: 'chart', genreId: 152 },
-  rap: { kind: 'chart', genreId: 116 },
-  electro: { kind: 'chart', genreId: 106 },
-  rnb: { kind: 'chart', genreId: 165 },
-  metal: { kind: 'chart', genreId: 464 },
-  reggae: { kind: 'chart', genreId: 144 },
-  jazz: { kind: 'chart', genreId: 129 },
+  pop: {
+    kind: 'playlists',
+    queries: ['pop hits international', 'top pop hits', 'pop essentials', 'pure pop hits', 'les plus grands tubes pop'],
+  },
+  rock: {
+    kind: 'playlists',
+    queries: ['rock classics', 'best of rock', 'rock hits', 'top rock songs', 'classic rock anthems'],
+  },
+  rap: {
+    kind: 'playlists',
+    queries: ['rap français', 'rap us hits', 'top rap', 'hip hop classics', 'best of rap'],
+  },
+  electro: {
+    kind: 'playlists',
+    queries: ['electro dance hits', 'clubbing electro', 'best of electro', 'dance hits'],
+  },
+  rnb: {
+    kind: 'playlists',
+    queries: ['rnb soul classics', 'best of rnb', 'top rnb', 'r&b hits'],
+  },
+  metal: {
+    kind: 'playlists',
+    queries: ['metal classics', 'heavy metal', 'best of metal', 'hard rock metal'],
+  },
+  reggae: {
+    kind: 'playlists',
+    queries: ['reggae classics', 'best of reggae', 'reggae roots', 'bob marley & reggae'],
+  },
+  jazz: {
+    kind: 'playlists',
+    queries: ['jazz classics', 'best of jazz', 'jazz vocal', 'smooth jazz'],
+  },
   'variete-fr': {
     kind: 'playlists',
     queries: ['variété française', 'chanson française cultes', 'les plus grands tubes français'],
@@ -38,6 +62,10 @@ export const GENRE_SOURCES: Record<string, ThemeSource> = {
   disco: {
     kind: 'playlists',
     queries: ['disco funk', 'best of disco', 'disco classics', 'tubes disco 70s 80s'],
+  },
+  kpop: {
+    kind: 'playlists',
+    queries: ['kpop hits', 'best of kpop', 'top kpop songs', 'kpop 2024', 'kpop classics'],
   },
 };
 
@@ -53,6 +81,7 @@ export const THEMES: ThemeDefinition[] = [
   { id: 'jazz', label: 'Jazz / Blues', emoji: '🎷', category: 'genre', source: GENRE_SOURCES.jazz },
   { id: 'variete-fr', label: 'Variété française', emoji: '🇫🇷', category: 'genre', source: GENRE_SOURCES['variete-fr'] },
   { id: 'disco', label: 'Disco / Funk', emoji: '✨', category: 'genre', source: GENRE_SOURCES.disco },
+  { id: 'kpop', label: 'K-pop', emoji: '🇰🇷', category: 'genre', source: GENRE_SOURCES.kpop },
 
   {
     id: '60s',

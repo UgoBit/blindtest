@@ -43,6 +43,7 @@ export const GENRES_LIST: GenreOption[] = [
   { id: 'disco', label: 'Disco / Funk', emoji: '✨' },
   { id: 'reggae', label: 'Reggae', emoji: '🌴' },
   { id: 'jazz', label: 'Jazz / Blues', emoji: '🎷' },
+  { id: 'kpop', label: 'K-pop', emoji: '🇰🇷' },
 ];
 
 export interface Player {

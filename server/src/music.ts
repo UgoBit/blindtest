@@ -50,8 +50,8 @@ async function fetchJson<T>(url: string): Promise<T | null> {
 
 function toTrack(t: DeezerTrack, themeCategory?: string): Track | null {
   if (!t.preview || !t.artist?.name) return null;
-  const cult = lookupWork(t.title_short ?? t.title, t.artist.name, t.album?.title, themeCategory);
   const isCulture = ['films', 'series', 'dessins-animes', 'animes', 'disney', 'jeux-video', 'pub'].includes(themeCategory ?? '');
+  const cult = isCulture ? lookupWork(t.title_short ?? t.title, t.artist.name, t.album?.title, themeCategory) : null;
 
   let rank = t.rank ?? 0;
   if (cult?.difficulty === 'facile') {
@@ -272,11 +272,47 @@ const CONFLICTING_DECADE_REGEX: Record<string, RegExp> = {
   '60s': /\b(202\d|201\d|2000s?|00s?|90s?|80s?|70s?)\b/i,
 };
 
+const CONFLICTING_GENRE_REGEX: Record<string, RegExp> = {
+  pop: /\b(rock|metal|hardrock|hard-rock|punk|grunge|indie rock|metalcore|heavy metal|classic rock|pop-rock|pop rock|rock & pop|rock and pop)\b/i,
+  rock: /\b(rap|hip hop|hip-hop|r&b|rnb|k-?pop|reggaeton|disco funk|techno)\b/i,
+  rap: /\b(rock|metal|punk|country|electro|techno|variété)\b/i,
+  electro: /\b(rock|metal|acoustic|country|reggae|variété|chanson)\b/i,
+  metal: /\b(pop|rap|hip-hop|disco|dance|k-?pop|reggae|variété)\b/i,
+  disco: /\b(rock|metal|rap|grunge|hard|punk|electro dance)\b/i,
+  kpop: /\b(j-?pop|c-?pop|anime|western|rock classics)\b/i,
+  reggae: /\b(rock|metal|pop hits|techno|electro)\b/i,
+  jazz: /\b(rock|metal|rap|electro|techno|pop hits)\b/i,
+  'variete-fr': /\b(rock international|metal|rap us|hip hop us|k-?pop)\b/i,
+};
+
+const PURE_ROCK_ARTISTS = new Set([
+  'ac/dc', 'ac dc', 'acdc', 'metallica', 'iron maiden', 'guns n roses', 'guns n\' roses', 'guns and roses',
+  'nirvana', 'rammstein', 'system of a down', 'slipknot', 'motorhead', 'motörhead', 'mötley crüe',
+  'judas priest', 'black sabbath', 'led zeppelin', 'deep purple', 'megadeth', 'slayer', 'pantera',
+  'avenged sevenfold', 'linkin park', 'limp bizkit', 'korn', 'rage against the machine', 'disturbed',
+  'marilyn manson', 'green day', 'blink-182', 'blink 182', 'the offspring', 'offspring', 'foo fighters',
+  'red hot chili peppers', 'scorpions', 'aerosmith', 'kiss', 'bon jovi', 'def leppard', 'zz top',
+  'van halen', 'ozzy osbourne', 'alice cooper', 'the smashing pumpkins', 'smashing pumpkins',
+  'soundgarden', 'pearl jam', 'alice in chains', 'queens of the stone age', 'muse', 'arctic monkeys',
+  'the rolling stones', 'the who', 'the doors', 'the clash', 'sex pistols', 'ramones', 'the cure',
+  'dire straits', 'pink floyd', 'oasis', 'blur', 'radiohead', 'u2', 'nickelback', 'sum 41',
+  'sum41', 'simple plan', 'papa roach', 'three days grace', 'evanescence', 'skillet',
+]);
+
 const FAKE_ARTIST_REGEX = /^(?:various artists|multi-interprètes|les meilleurs|party hits|top hits|best of|summer hits|hit tracks|hits 20\d\d)\b/i;
 
-function isAcceptableTrack(track: Track): boolean {
+function isAcceptableTrack(track: Track, themeId?: string): boolean {
   if (!track.title || !track.artist || !track.previewUrl) return false;
   if (FAKE_ARTIST_REGEX.test(track.artist.trim())) return false;
+  if (themeId === 'pop') {
+    const norm = normalizeAnswer(track.artist);
+    if (PURE_ROCK_ARTISTS.has(norm)) return false;
+    for (const rockArtist of PURE_ROCK_ARTISTS) {
+      if (norm === rockArtist || norm.startsWith(rockArtist + ' ') || norm.endsWith(' ' + rockArtist)) {
+        return false;
+      }
+    }
+  }
   return true;
 }
 
@@ -292,7 +328,7 @@ async function fetchFromSource(
     const data = await fetchJson<{ data?: DeezerTrack[] }>(`${DEEZER}/chart/${genreId}/tracks?limit=100`);
     for (const t of data?.data ?? []) {
       const track = toTrack(t, themeId);
-      if (track && isAcceptableTrack(track)) tracks.push(track);
+      if (track && isAcceptableTrack(track, themeId)) tracks.push(track);
     }
     const radios = await fetchJson<{ data?: { id: number }[] }>(`${DEEZER}/genre/${genreId}/radios`);
     for (const radio of (radios?.data ?? []).slice(0, 3)) {
@@ -301,12 +337,13 @@ async function fetchFromSource(
       );
       for (const t of radioTracks?.data ?? []) {
         const track = toTrack(t, themeId);
-        if (track && isAcceptableTrack(track)) tracks.push(track);
+        if (track && isAcceptableTrack(track, themeId)) tracks.push(track);
       }
     }
   } else {
     const queries = source.kind === 'playlists' ? source.queries : [`${themeId} ${extraQuery}`];
-    const conflictRegex = CONFLICTING_DECADE_REGEX[themeId];
+    const conflictDecade = CONFLICTING_DECADE_REGEX[themeId];
+    const conflictGenre = CONFLICTING_GENRE_REGEX[themeId];
 
     for (const query of queries) {
       const composed = extraQuery && !query.includes(extraQuery) ? `${query} ${extraQuery}`.trim() : query;
@@ -317,7 +354,8 @@ async function fetchFromSource(
       );
       const playlists = (found?.data ?? []).filter((p) => {
         const title = p.title ?? '';
-        if (conflictRegex && conflictRegex.test(title)) return false;
+        if (conflictDecade && conflictDecade.test(title)) return false;
+        if (conflictGenre && conflictGenre.test(title)) return false;
         const count = p.nb_tracks ?? 0;
         return count >= 15 && count <= 250;
       }).slice(0, 4);
@@ -328,7 +366,7 @@ async function fetchFromSource(
         );
         for (const t of data?.data ?? []) {
           const track = toTrack(t, themeId);
-          if (track && isAcceptableTrack(track)) tracks.push(track);
+          if (track && isAcceptableTrack(track, themeId)) tracks.push(track);
         }
       }
 

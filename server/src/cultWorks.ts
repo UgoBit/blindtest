@@ -1569,6 +1569,7 @@ export function lookupWork(
   const fullText = `${normTitle} ${normArtist} ${normalizeWorkText(albumTitle ?? '')}`;
 
   for (const entry of CULT_WORKS_DICTIONARY) {
+    if (themeCategory && entry.category !== themeCategory) continue;
     const { title: eTitle, artist: eArtist, keywords: eKeywords } = entry.matcher;
 
     if (eTitle && eArtist) {

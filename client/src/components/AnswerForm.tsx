@@ -27,14 +27,16 @@ export default function AnswerForm({
   fieldLabel = 'Œuvre / Titre / Artiste',
   fieldPlaceholder = 'Nom du film, disney, jeu, pub, titre ou artiste…',
 }: Props) {
-  const isLocked = titleLocked || artistLocked;
+  const allLocked = singleField ? (titleLocked || artistLocked) : (titleLocked && artistLocked);
 
   return (
     <form
       className={className}
       onSubmit={(event) => {
         event.preventDefault();
-        onSubmit();
+        if (!allLocked) {
+          onSubmit();
+        }
       }}
     >
       <div>
@@ -46,23 +48,23 @@ export default function AnswerForm({
         <label className="block">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-white/80">{fieldLabel}</span>
-            {isLocked && (
+            {allLocked && (
               <span className="rounded bg-emerald-500/20 px-2 py-0.5 text-xs font-semibold text-emerald-300">
                 Déjà trouvé ✓
               </span>
             )}
           </div>
           <input
-            autoFocus={!isLocked}
-            disabled={isLocked}
+            autoFocus={!allLocked}
+            disabled={allLocked}
             value={title || artist}
             onChange={(event) => {
               onTitle(event.target.value);
               onArtist(event.target.value);
             }}
-            placeholder={isLocked ? undefined : fieldPlaceholder}
+            placeholder={allLocked ? undefined : fieldPlaceholder}
             className={`mt-1 w-full rounded-xl border px-4 py-3.5 text-lg text-white outline-none transition ${
-              isLocked
+              allLocked
                 ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200 cursor-not-allowed'
                 : 'border-white/15 bg-white/10 focus:border-neon focus:ring-2 focus:ring-neon/30'
             }`}
@@ -120,7 +122,7 @@ export default function AnswerForm({
         </>
       )}
 
-      <button type="submit" className="btn-primary w-full shadow-lg" disabled={isLocked}>
+      <button type="submit" className="btn-primary w-full shadow-lg" disabled={allLocked}>
         Valider ma réponse
       </button>
     </form>
