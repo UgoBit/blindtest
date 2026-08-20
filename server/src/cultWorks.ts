@@ -10,12 +10,12 @@ export interface CultWorkEntry {
     artist?: string;
     keywords?: string[];
   };
-  /** Nom principal de l'œuvre (Film, Marque de pub, Disney, Série, Jeu vidéo) */
+  /** Nom principal de l'œuvre (Film, Marque de pub, Disney, Série, Dessin animé, Animé, Jeu vidéo) */
   work: string;
   /** Alias et variantes acceptés (ex: titre en anglais, diminutifs, sous-marques) */
   aliases?: string[];
   /** Catégorie de l'œuvre */
-  category: 'pub' | 'films' | 'disney' | 'dessins-animes' | 'jeux-video';
+  category: 'pub' | 'films' | 'series' | 'dessins-animes' | 'animes' | 'disney' | 'jeux-video';
 }
 
 /**
@@ -420,56 +420,96 @@ export const CULT_WORKS_DICTIONARY: CultWorkEntry[] = [
   },
 
   // ==========================================
-  // 📺 SÉRIES & DESSINS ANIMÉS CULTES
+  // 📺 SÉRIES TV CULTES
   // ==========================================
-  {
-    matcher: { keywords: ['un jour je serai le meilleur dresseur', 'pokemon theme', 'attrapez les tous', 'pokemon', 'gotta catch em all'] },
-    work: 'Pokémon',
-    aliases: ['Pokemon', 'Pocket Monsters'],
-    category: 'dessins-animes',
-  },
-  {
-    matcher: { keywords: ['cha la head cha la', 'dragon ball', 'dbz', 'kamehameha', 'dragon ball z'] },
-    work: 'Dragon Ball Z',
-    aliases: ['DBZ', 'Dragon Ball', 'Dragon Ball Super'],
-    category: 'dessins-animes',
-  },
-  {
-    matcher: { keywords: ['we are', 'one piece', 'luffy', 'straw hat'] },
-    work: 'One Piece',
-    aliases: ['One piece anime'],
-    category: 'dessins-animes',
-  },
-  {
-    matcher: { keywords: ['blue bird', 'silhouette', 'naruto', 'naruto shippuden', 'sasuke'] },
-    work: 'Naruto',
-    aliases: ['Naruto Shippuden', 'Boruto'],
-    category: 'dessins-animes',
-  },
-  {
-    matcher: { keywords: ['guren no yumiya', 'attack on titan', 'attaque des titans', 'shingeki no kyojin'] },
-    work: "L'Attaque des Titans",
-    aliases: ['Attack on Titan', 'Shingeki no Kyojin', 'SNK', 'Attaque des titans'],
-    category: 'dessins-animes',
-  },
   {
     matcher: { keywords: ['i ll be there for you', 'friends theme', 'the rembrandts'] },
     work: 'Friends',
-    aliases: ['Friends serie'],
-    category: 'dessins-animes',
+    aliases: ['Friends serie', 'Serie Friends'],
+    category: 'series',
   },
   {
-    matcher: { keywords: ['game of thrones theme', 'main title game of thrones', 'ramin djawadi'] },
+    matcher: { keywords: ['game of thrones theme', 'main title game of thrones', 'ramin djawadi', 'trone de fer'] },
     work: 'Game of Thrones',
     aliases: ['GOT', 'Le Trone de Fer', 'House of the Dragon'],
-    category: 'dessins-animes',
+    category: 'series',
   },
   {
-    matcher: { keywords: ['stranger things theme', 'kyle dixon'] },
+    matcher: { keywords: ['stranger things theme', 'kyle dixon', 'stranger things'] },
     work: 'Stranger Things',
     aliases: ['Stranger Things serie'],
-    category: 'dessins-animes',
+    category: 'series',
   },
+  {
+    matcher: { keywords: ['peaky blinders', 'red right hand', 'nick cave'] },
+    work: 'Peaky Blinders',
+    aliases: ['Serie Peaky Blinders'],
+    category: 'series',
+  },
+  {
+    matcher: { keywords: ['bella ciao la casa de papel', 'my life is going on', 'cecilia krull', 'casa de papel'] },
+    work: 'La Casa de Papel',
+    aliases: ['Money Heist', 'Casa de Papel'],
+    category: 'series',
+  },
+  {
+    matcher: { keywords: ['boss of me', 'they might be giants', 'malcolm in the middle', 'generique malcolm'] },
+    work: 'Malcolm',
+    aliases: ['Malcolm in the Middle', 'Malcolm serie'],
+    category: 'series',
+  },
+  {
+    matcher: { keywords: ['x-files', 'x files theme', 'mark snow', 'aux frontieres du reel'] },
+    work: 'X-Files',
+    aliases: ['The X-Files', 'Aux frontières du réel', 'X Files'],
+    category: 'series',
+  },
+  {
+    matcher: { keywords: ['how soon is now', 'love spit love', 'charmed theme', 'generique charmed'] },
+    work: 'Charmed',
+    aliases: ['Serie Charmed'],
+    category: 'series',
+  },
+  {
+    matcher: { keywords: ['nerf herder', 'buffy the vampire slayer', 'generique buffy', 'buffy contre les vampires'] },
+    work: 'Buffy contre les vampires',
+    aliases: ['Buffy', 'Buffy the Vampire Slayer'],
+    category: 'series',
+  },
+  {
+    matcher: { keywords: ['hey beautiful', 'the solids', 'how i met your mother', 'himym'] },
+    work: 'How I Met Your Mother',
+    aliases: ['HIMYM'],
+    category: 'series',
+  },
+  {
+    matcher: { keywords: ['breaking bad theme', 'dave porter breaking bad'] },
+    work: 'Breaking Bad',
+    aliases: ['Better Call Saul'],
+    category: 'series',
+  },
+  {
+    matcher: { keywords: ['the walking dead theme', 'bear mccreary walking dead'] },
+    work: 'The Walking Dead',
+    aliases: ['TWD', 'Walking Dead'],
+    category: 'series',
+  },
+  {
+    matcher: { keywords: ['kaamelott', 'alexandre astier kaamelott'] },
+    work: 'Kaamelott',
+    aliases: ['Kaamelott serie'],
+    category: 'series',
+  },
+  {
+    matcher: { keywords: ['suicide is painless', 'mash theme'] },
+    work: 'M*A*S*H',
+    aliases: ['MASH'],
+    category: 'series',
+  },
+
+  // ==========================================
+  // 🎨 DESSINS ANIMÉS CULTES
+  // ==========================================
   {
     matcher: { keywords: ['the simpsons theme', 'danny elfman simpsons', 'les simpson'] },
     work: 'Les Simpson',
@@ -477,7 +517,7 @@ export const CULT_WORKS_DICTIONARY: CultWorkEntry[] = [
     category: 'dessins-animes',
   },
   {
-    matcher: { keywords: ['goldorak', 'cours vers jupiter', 'bernard minet goldorak'] },
+    matcher: { keywords: ['goldorak', 'cours vers jupiter', 'bernard minet goldorak', 'enriqué goldorak', 'noam goldorak'] },
     work: 'Goldorak',
     aliases: ['Grendizer'],
     category: 'dessins-animes',
@@ -489,10 +529,170 @@ export const CULT_WORKS_DICTIONARY: CultWorkEntry[] = [
     category: 'dessins-animes',
   },
   {
-    matcher: { keywords: ['mysterieuses cites d or', 'enfants du soleil', 'esteban zia tao'] },
+    matcher: { keywords: ['mysterieuses cites d or', 'enfants du soleil', 'esteban zia tao', 'cités d or'] },
     work: "Les Mystérieuses Cités d'Or",
-    aliases: ['Mysterieuses Cites d Or', 'Les Cites d Or'],
+    aliases: ['Mysterieuses Cites d Or', 'Les Cites d Or', 'Cités d Or'],
     category: 'dessins-animes',
+  },
+  {
+    matcher: { keywords: ['totally spies', 'here we go totally spies', 'trois espionnes de choc'] },
+    work: 'Totally Spies',
+    aliases: ['Totally Spies!'],
+    category: 'dessins-animes',
+  },
+  {
+    matcher: { keywords: ['code lyoko', 'un monde sans danger', 'julien lamassonne'] },
+    work: 'Code Lyoko',
+    aliases: ['Code Lioko'],
+    category: 'dessins-animes',
+  },
+  {
+    matcher: { keywords: ['scooby doo where are you', 'scooby-doo', 'scooby-doo generique'] },
+    work: 'Scooby-Doo',
+    aliases: ['Scooby Doo', 'ScoobyDoo'],
+    category: 'dessins-animes',
+  },
+  {
+    matcher: { keywords: ['inspecteur gadget', 'eh la qui va la', 'gadget au chapeau'] },
+    work: 'Inspecteur Gadget',
+    aliases: ['Inspector Gadget'],
+    category: 'dessins-animes',
+  },
+  {
+    matcher: { keywords: ['titeuf', 'ca m epate', 'generique titeuf'] },
+    work: 'Titeuf',
+    aliases: ['Titeuf dessin anime'],
+    category: 'dessins-animes',
+  },
+  {
+    matcher: { keywords: ['bob l eponge', 'qui vit dans un ananas', 'spongebob theme'] },
+    work: "Bob l'Éponge",
+    aliases: ['Bob l Eponge', 'SpongeBob', 'Spongebob Squarepants'],
+    category: 'dessins-animes',
+  },
+  {
+    matcher: { keywords: ['oggy et les cafards', 'hugues le bars oggy'] },
+    work: 'Oggy et les Cafards',
+    aliases: ['Oggy and the Cockroaches', 'Oggy'],
+    category: 'dessins-animes',
+  },
+  {
+    matcher: { keywords: ['les razmoket', 'rugrats theme', 'mark mothersbaugh'] },
+    work: 'Les Razmoket',
+    aliases: ['Rugrats', 'Razmoket'],
+    category: 'dessins-animes',
+  },
+  {
+    matcher: { keywords: ['denver le dernier dinosaure', 'c est mon ami et bien plus encore'] },
+    work: 'Denver, le dernier dinosaure',
+    aliases: ['Denver', 'Denver le dinosaure'],
+    category: 'dessins-animes',
+  },
+  {
+    matcher: { keywords: ['il etait une fois la vie', 'hymne a la vie', 'michel legrand la vie'] },
+    work: 'Il était une fois... la Vie',
+    aliases: ['Il etait une fois la vie', 'La vie la vie la vie'],
+    category: 'dessins-animes',
+  },
+
+  // ==========================================
+  // 🇯🇵 ANIMÉS & MANGAS CULTES
+  // ==========================================
+  {
+    matcher: { keywords: ['un jour je serai le meilleur dresseur', 'pokemon theme', 'attrapez les tous', 'pokemon', 'gotta catch em all'] },
+    work: 'Pokémon',
+    aliases: ['Pokemon', 'Pocket Monsters'],
+    category: 'animes',
+  },
+  {
+    matcher: { keywords: ['cha la head cha la', 'dragon ball', 'dbz', 'kamehameha', 'dragon ball z', 'dan dan kokoro', 'makafushigi adventure'] },
+    work: 'Dragon Ball Z',
+    aliases: ['DBZ', 'Dragon Ball', 'Dragon Ball Super', 'Dragon Ball GT'],
+    category: 'animes',
+  },
+  {
+    matcher: { keywords: ['we are one piece', 'one piece opening', 'hiroshi kitadani', 'hikari e', 'kokoro no chizu', 'over the top one piece'] },
+    work: 'One Piece',
+    aliases: ['One piece anime'],
+    category: 'animes',
+  },
+  {
+    matcher: { keywords: ['blue bird ikimono', 'silhouette kana boon', 'naruto opening', 'naruto shippuden', 'haruka kanata', 'sign flow naruto'] },
+    work: 'Naruto',
+    aliases: ['Naruto Shippuden', 'Boruto'],
+    category: 'animes',
+  },
+  {
+    matcher: { keywords: ['guren no yumiya', 'attack on titan', 'attaque des titans', 'shingeki no kyojin', 'shinzou wo sasageyo', 'the rumbling'] },
+    work: "L'Attaque des Titans",
+    aliases: ['Attack on Titan', 'Shingeki no Kyojin', 'SNK', 'Attaque des titans'],
+    category: 'animes',
+  },
+  {
+    matcher: { keywords: ['the world nightmare', 'death note opening', 'what s up people', 'maximum the hormone death note'] },
+    work: 'Death Note',
+    aliases: ['Death Note anime'],
+    category: 'animes',
+  },
+  {
+    matcher: { keywords: ['gurenge', 'demon slayer', 'kimetsu no yaiba', 'zankyou sanka', 'lisa demon slayer'] },
+    work: 'Demon Slayer',
+    aliases: ['Kimetsu no Yaiba', 'Demon Slayer Kimetsu no Yaiba'],
+    category: 'animes',
+  },
+  {
+    matcher: { keywords: ['kaikai kitan', 'jujutsu kaisen opening', 'eve jujutsu kaisen', 'specialz king gnu'] },
+    work: 'Jujutsu Kaisen',
+    aliases: ['JJK', 'Jujutsu Kaisen anime'],
+    category: 'animes',
+  },
+  {
+    matcher: { keywords: ['the day porno graffitti', 'peace sign kenshi yonezu', 'my hero academia opening', 'mha opening'] },
+    work: 'My Hero Academia',
+    aliases: ['MHA', 'Boku no Hero Academia'],
+    category: 'animes',
+  },
+  {
+    matcher: { keywords: ['unravel tk', 'tokyo ghoul opening', 'unravel tokyo ghoul'] },
+    work: 'Tokyo Ghoul',
+    aliases: ['Tokyo Ghoul anime'],
+    category: 'animes',
+  },
+  {
+    matcher: { keywords: ['again yui', 'fullmetal alchemist brotherhood', 'fma opening', 'hologram nico touches'] },
+    work: 'Fullmetal Alchemist',
+    aliases: ['FMA', 'Fullmetal Alchemist Brotherhood', 'FMAB'],
+    category: 'animes',
+  },
+  {
+    matcher: { keywords: ['a cruel angel s thesis', 'evangelion opening', 'yoko takahashi evangelion', 'neon genesis evangelion'] },
+    work: 'Neon Genesis Evangelion',
+    aliases: ['Evangelion', 'NGE'],
+    category: 'animes',
+  },
+  {
+    matcher: { keywords: ['pegasus fantasy', 'les chevaliers du zodiaque', 'saint seiya opening', 'make up pegasus'] },
+    work: 'Les Chevaliers du Zodiaque',
+    aliases: ['Saint Seiya', 'Chevaliers du Zodiaque'],
+    category: 'animes',
+  },
+  {
+    matcher: { keywords: ['moonlight densetsu', 'sailor moon opening', 'sailor moon generique'] },
+    work: 'Sailor Moon',
+    aliases: ['Pretty Guardian Sailor Moon'],
+    category: 'animes',
+  },
+  {
+    matcher: { keywords: ['departure masatoshi ono', 'hunter x hunter opening', 'hxh opening'] },
+    work: 'Hunter x Hunter',
+    aliases: ['HxH', 'Hunter X Hunter 2011'],
+    category: 'animes',
+  },
+  {
+    matcher: { keywords: ['asterisk orange range', 'bleach opening', 'velonica aqua timez', 'ranbu no melody'] },
+    work: 'Bleach',
+    aliases: ['Bleach anime', 'Bleach Thousand Year Blood War'],
+    category: 'animes',
   },
 
   // ==========================================
@@ -624,7 +824,7 @@ export function lookupWork(
   artist: string,
   albumTitle?: string,
   themeCategory?: string,
-): { work: string; aliases: string[]; category: 'pub' | 'films' | 'disney' | 'dessins-animes' | 'jeux-video' } | null {
+): { work: string; aliases: string[]; category: 'pub' | 'films' | 'series' | 'dessins-animes' | 'animes' | 'disney' | 'jeux-video' } | null {
   const normTitle = normalizeWorkText(title);
   const normArtist = normalizeWorkText(artist);
   const fullText = `${normTitle} ${normArtist} ${normalizeWorkText(albumTitle ?? '')}`;
@@ -660,10 +860,12 @@ export function lookupWork(
   // 2. Extraction automatique depuis les métadonnées (album/titre)
   const extracted = extractWorkFromMetadata(title, albumTitle);
   if (extracted && extracted.length > 1) {
-    let cat: 'pub' | 'films' | 'disney' | 'dessins-animes' | 'jeux-video' = 'films';
+    let cat: 'pub' | 'films' | 'series' | 'dessins-animes' | 'animes' | 'disney' | 'jeux-video' = 'films';
     if (themeCategory === 'disney') cat = 'disney';
     else if (themeCategory === 'jeux-video') cat = 'jeux-video';
     else if (themeCategory === 'dessins-animes') cat = 'dessins-animes';
+    else if (themeCategory === 'animes') cat = 'animes';
+    else if (themeCategory === 'series') cat = 'series';
     else if (themeCategory === 'pub') cat = 'pub';
 
     return {

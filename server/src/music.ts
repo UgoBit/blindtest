@@ -50,7 +50,7 @@ async function fetchJson<T>(url: string): Promise<T | null> {
 function toTrack(t: DeezerTrack, themeCategory?: string): Track | null {
   if (!t.preview || !t.artist?.name) return null;
   const cult = lookupWork(t.title_short ?? t.title, t.artist.name, t.album?.title, themeCategory);
-  const isCulture = ['films', 'disney', 'dessins-animes', 'jeux-video', 'pub'].includes(themeCategory ?? '');
+  const isCulture = ['films', 'series', 'dessins-animes', 'animes', 'disney', 'jeux-video', 'pub'].includes(themeCategory ?? '');
 
   return {
     id: String(t.id),

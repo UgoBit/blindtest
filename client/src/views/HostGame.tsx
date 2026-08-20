@@ -17,8 +17,10 @@ interface Props {
 const CATEGORY_BADGES: Record<string, { label: string; emoji: string; color: string }> = {
   pub: { label: 'Publicité', emoji: '📢', color: 'bg-amber-500/20 text-amber-300 border-amber-500/30' },
   films: { label: 'Musique de film', emoji: '🎬', color: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30' },
+  series: { label: 'Série TV', emoji: '📺', color: 'bg-purple-500/20 text-purple-300 border-purple-500/30' },
+  'dessins-animes': { label: 'Dessin animé', emoji: '🎨', color: 'bg-orange-500/20 text-orange-300 border-orange-500/30' },
+  animes: { label: 'Animé & Manga', emoji: '🇯🇵', color: 'bg-rose-500/20 text-rose-300 border-rose-500/30' },
   disney: { label: 'Disney & Pixar', emoji: '🏰', color: 'bg-sky-500/20 text-sky-300 border-sky-500/30' },
-  'dessins-animes': { label: 'Série & Dessin animé', emoji: '📺', color: 'bg-purple-500/20 text-purple-300 border-purple-500/30' },
   'jeux-video': { label: 'Jeu vidéo', emoji: '🎮', color: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' },
 };
 
