@@ -16,11 +16,13 @@ export interface CultWorkEntry {
   aliases?: string[];
   /** Catégorie de l'œuvre */
   category: 'pub' | 'films' | 'series' | 'dessins-animes' | 'animes' | 'disney' | 'jeux-video';
+  /** Niveau de difficulté : 'facile' (archi-connu), 'moyen' (classique), 'difficile' (pointu / connaisseurs) */
+  difficulty?: 'facile' | 'moyen' | 'difficile';
 }
 
 /**
  * Dictionnaire des musiques et œuvres cultes.
- * Tu peux ajouter ici autant de lignes que tu veux !
+ * Tu peux ajouter ici autant de lignes que tu veux avec la difficulté de ton choix !
  */
 export const CULT_WORKS_DICTIONARY: CultWorkEntry[] = [
   // ==========================================
@@ -31,24 +33,21 @@ export const CULT_WORKS_DICTIONARY: CultWorkEntry[] = [
     work: 'Dior',
     aliases: ['Miss Dior', 'Jadore Dior', 'Parfum Dior'],
     category: 'pub',
+    difficulty: 'facile',
   },
   {
     matcher: { title: 'Dont Stop Me Now', artist: 'Queen' },
     work: 'Peugeot',
     aliases: ['Google', 'Peugeot 208', 'Pub Peugeot'],
     category: 'pub',
-  },
-  {
-    matcher: { title: 'I Want to Break Free', artist: 'Queen' },
-    work: 'Cillit Bang',
-    aliases: ['Pub Cillit Bang', 'Coca Cola'],
-    category: 'pub',
+    difficulty: 'moyen',
   },
   {
     matcher: { title: 'Quelqu un m a dit', artist: 'Carla Bruni' },
     work: "L'Oréal",
     aliases: ['Loreal', 'Pub Loreal', 'Parce que je le vaux bien'],
     category: 'pub',
+    difficulty: 'facile',
   },
   {
     matcher: { title: 'Thats Not My Name', artist: 'The Ting Tings' },
@@ -1140,7 +1139,12 @@ export function lookupWork(
   artist: string,
   albumTitle?: string,
   themeCategory?: string,
-): { work: string; aliases: string[]; category: 'pub' | 'films' | 'series' | 'dessins-animes' | 'animes' | 'disney' | 'jeux-video' } | null {
+): {
+  work: string;
+  aliases: string[];
+  category: 'pub' | 'films' | 'series' | 'dessins-animes' | 'animes' | 'disney' | 'jeux-video';
+  difficulty?: 'facile' | 'moyen' | 'difficile';
+} | null {
   const normTitle = normalizeWorkText(title);
   const normArtist = normalizeWorkText(artist);
   const fullText = `${normTitle} ${normArtist} ${normalizeWorkText(albumTitle ?? '')}`;
@@ -1157,6 +1161,7 @@ export function lookupWork(
           work: entry.work,
           aliases: entry.aliases ?? [],
           category: entry.category,
+          difficulty: entry.difficulty,
         };
       }
     }
@@ -1168,6 +1173,7 @@ export function lookupWork(
           work: entry.work,
           aliases: entry.aliases ?? [],
           category: entry.category,
+          difficulty: entry.difficulty,
         };
       }
     }

@@ -14,6 +14,7 @@ export interface Track {
   workCategory?: string | null;
   workAliases?: string[];
   isSingleField?: boolean;
+  difficulty?: 'facile' | 'moyen' | 'difficile' | null;
 }
 
 interface DeezerTrack {
@@ -52,17 +53,27 @@ function toTrack(t: DeezerTrack, themeCategory?: string): Track | null {
   const cult = lookupWork(t.title_short ?? t.title, t.artist.name, t.album?.title, themeCategory);
   const isCulture = ['films', 'series', 'dessins-animes', 'animes', 'disney', 'jeux-video', 'pub'].includes(themeCategory ?? '');
 
+  let rank = t.rank ?? 0;
+  if (cult?.difficulty === 'facile') {
+    rank = Math.max(rank, 850000);
+  } else if (cult?.difficulty === 'moyen') {
+    rank = rank ? Math.min(Math.max(rank, 450000), 750000) : 550000;
+  } else if (cult?.difficulty === 'difficile') {
+    rank = Math.min(rank, 250000);
+  }
+
   return {
     id: String(t.id),
     title: t.title_short ?? t.title,
     artist: t.artist.name,
     cover: t.album?.cover_big ?? t.album?.cover_medium ?? null,
     previewUrl: t.preview,
-    rank: t.rank ?? 0,
+    rank,
     work: cult?.work ?? null,
     workCategory: cult?.category ?? (isCulture ? themeCategory : null),
     workAliases: cult?.aliases ?? [],
     isSingleField: !!cult || isCulture,
+    difficulty: cult?.difficulty ?? null,
   };
 }
 
@@ -369,10 +380,28 @@ function shuffle<T>(items: T[]): T[] {
 
 /**
  * Keeps the slice of a theme's pool matching the requested difficulty: tracks are
- * ranked by popularity, then split into three bands (easiest = most popular).
+ * ranked by popularity and explicit difficulty tags, then split into bands.
  */
 function gradeByDifficulty(pool: Track[], difficulty: Difficulty): Track[] {
-  if (difficulty === 'mixte' || pool.length < 12) return pool;
+  if (difficulty === 'mixte') return pool;
+
+  const explicitMatches = pool.filter((t) => t.difficulty === difficulty);
+  const untaggedOrOther = pool.filter((t) => t.difficulty !== difficulty);
+
+  // If we have enough tracks with explicit matching difficulty, prioritize them and complete with the rest
+  if (explicitMatches.length >= 4) {
+    const rankedOthers = [...untaggedOrOther].sort((a, b) => b.rank - a.rank);
+    const band = Math.ceil(rankedOthers.length / 3);
+    const slice =
+      difficulty === 'facile'
+        ? rankedOthers.slice(0, band)
+        : difficulty === 'moyen'
+          ? rankedOthers.slice(band, band * 2)
+          : rankedOthers.slice(band * 2);
+    return [...explicitMatches, ...slice];
+  }
+
+  if (pool.length < 12) return pool;
   const ranked = [...pool].sort((a, b) => b.rank - a.rank);
   const band = Math.ceil(ranked.length / 3);
   if (difficulty === 'facile') return ranked.slice(0, band);
